@@ -7,12 +7,16 @@ import serviceRoutes from "./routes/services.routes";
 import availabilityRoutes from "./routes/availability.routes";
 import bookingRoutes from "./routes/booking.routes";
 
-
 dotenv.config();
 
 const app = express();
 
-app.use(cors());
+app.use(
+    cors({
+        origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    })
+);
+
 app.use(express.json());
 
 // Routes
@@ -24,7 +28,7 @@ app.use("/api/bookings", bookingRoutes);
 
 app.get("/", (req, res) => {
     res.json({
-        message: "Slotify backend is running!"
+        message: "Slotify backend is running!",
     });
 });
 

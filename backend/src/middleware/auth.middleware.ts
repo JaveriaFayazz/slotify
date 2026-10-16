@@ -1,12 +1,21 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
+type UserRole = "CUSTOMER" | "OWNER" | "ADMIN";
+
 export interface AuthenticatedRequest extends Request {
     user?: {
         id: string;
-        role: "CUSTOMER" | "OWNER" | "ADMIN";
+        role: UserRole;
     };
 }
+
+interface AccessTokenPayload {
+    id: string;
+    role: UserRole;
+}
+
+const validRoles: UserRole[] = ["CUSTOMER", "OWNER", "ADMIN"];
 
 export function authenticate(
     req: AuthenticatedRequest,
@@ -22,7 +31,13 @@ export function authenticate(
             });
         }
 
-        const token = authHeader.split(" ")[1];
+        const token = authHeader.slice("Bearer ".length).trim();
+
+        if (!token) {
+            return res.status(401).json({
+                message: "Authentication required"
+            });
+        }
 
         const secret = process.env.JWT_SECRET;
 
@@ -32,18 +47,36 @@ export function authenticate(
             });
         }
 
-        const decoded = jwt.verify(token, secret) as {
-            id: string;
-            role: "CUSTOMER" | "OWNER" | "ADMIN";
-        };
+        const decoded = jwt.verify(token, secret);
+
+        // A valid access token must contain an object payload.
+        if (typeof decoded !== "object" || decoded === null) {
+            return res.status(401).json({
+                message: "Invalid or expired token"
+            });
+        }
+
+        const payload = decoded as Partial<AccessTokenPayload>;
+
+        // Require a non-empty user ID and an allowed role.
+        if (
+            typeof payload.id !== "string" ||
+            payload.id.trim().length === 0 ||
+            typeof payload.role !== "string" ||
+            !validRoles.includes(payload.role as UserRole)
+        ) {
+            return res.status(401).json({
+                message: "Invalid or expired token"
+            });
+        }
 
         req.user = {
-            id: decoded.id,
-            role: decoded.role
+            id: payload.id,
+            role: payload.role as UserRole
         };
 
-        next();
-    } catch (error) {
+        return next();
+    } catch {
         return res.status(401).json({
             message: "Invalid or expired token"
         });

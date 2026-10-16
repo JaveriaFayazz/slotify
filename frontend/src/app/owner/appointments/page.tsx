@@ -4,6 +4,21 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import {
+  AiOutlineAppstore,
+  AiOutlineCalendar,
+  AiOutlineCheck,
+  AiOutlineCheckCircle,
+  AiOutlineClockCircle,
+  AiOutlineClose,
+  AiOutlineEnvironment,
+  AiOutlineLogout,
+  AiOutlineShop,
+  AiOutlineUser,
+} from "react-icons/ai";
+
+import { toast } from "sonner";
+
+import {
   getStoredUser,
   logout,
   User,
@@ -22,88 +37,99 @@ import {
 
 export default function OwnerAppointmentsPage() {
   const [user, setUser] = useState<User | null>(null);
-
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [selectedBusinessId, setSelectedBusinessId] = useState("");
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
 
   const [bookings, setBookings] = useState<Booking[]>([]);
 
   const [loadingBusinesses, setLoadingBusinesses] = useState(true);
   const [loadingBookings, setLoadingBookings] = useState(false);
 
-  const [updatingBookingId, setUpdatingBookingId] = useState("");
+  const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
 
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
 
   useEffect(() => {
     const storedUser = getStoredUser();
 
-    setUser(storedUser);
-
-    async function loadBusinesses() {
-      try {
-        const data = await getMyBusinesses();
-
-        setBusinesses(data);
-
-        if (data.length > 0) {
-          setSelectedBusinessId(data[0].id);
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to load businesses"
-        );
-      } finally {
-        setLoadingBusinesses(false);
-      }
+    if (!storedUser) {
+      setError("Please log in to continue.");
+      setLoadingBusinesses(false);
+      return;
     }
 
+    if (storedUser.role !== "OWNER") {
+      setError("Only business owners can access appointments.");
+      setLoadingBusinesses(false);
+      return;
+    }
+
+    setUser(storedUser);
     loadBusinesses();
   }, []);
 
   useEffect(() => {
-    if (!selectedBusinessId) {
-      setBookings([]);
-      return;
+    if (selectedBusinessId) {
+      loadBookings(selectedBusinessId);
     }
+  }, [selectedBusinessId]);
 
-    async function loadBookings() {
+  async function loadBusinesses() {
+    try {
+      setLoadingBusinesses(true);
+      setError("");
+
+      const data = await getMyBusinesses();
+
+      setBusinesses(data);
+
+      if (data.length > 0) {
+        setSelectedBusinessId(data[0].id);
+      }
+    } catch (err: any) {
+      const message =
+        err?.message || "Failed to load your businesses.";
+
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoadingBusinesses(false);
+    }
+  }
+
+  async function loadBookings(businessId: string) {
+    try {
       setLoadingBookings(true);
       setError("");
 
-      try {
-        const data = await getBusinessBookings(
-          selectedBusinessId
-        );
+      const data = await getBusinessBookings(businessId);
 
-        setBookings(data);
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to load appointments"
-        );
-      } finally {
-        setLoadingBookings(false);
-      }
+      setBookings(data);
+    } catch (err: any) {
+      const message =
+        err?.message || "Failed to load appointments.";
+
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoadingBookings(false);
     }
-
-    loadBookings();
-  }, [selectedBusinessId]);
+  }
 
   function handleLogout() {
     logout();
-
-    window.location.href = "/login";
   }
 
-  function formatDate(dateString: string) {
-    const date = new Date(
-      `${dateString}T00:00:00`
-    );
+  function formatDate(dateValue: string) {
+    const dateOnly = String(dateValue).split("T")[0];
+
+    const [year, month, day] = dateOnly.split("-").map(Number);
+
+    if (!year || !month || !day) {
+      return dateValue;
+    }
+
+    const date = new Date(year, month - 1, day);
 
     return date.toLocaleDateString("en-US", {
       weekday: "short",
@@ -113,9 +139,12 @@ export default function OwnerAppointmentsPage() {
     });
   }
 
-  function formatTime(timeString: string) {
-    const [hours, minutes] =
-      timeString.split(":").map(Number);
+  function formatTime(timeValue: string) {
+    const [hours, minutes] = String(timeValue).split(":").map(Number);
+
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+      return timeValue;
+    }
 
     const date = new Date();
 
@@ -128,601 +157,662 @@ export default function OwnerAppointmentsPage() {
   }
 
   function getStatusClass(status: string) {
-    switch (status) {
-      case "PENDING":
-        return "appointment-status pending";
-
-      case "CONFIRMED":
-        return "appointment-status confirmed";
-
-      case "COMPLETED":
-        return "appointment-status completed";
-
-      case "CANCELLED":
-        return "appointment-status cancelled";
-
-      default:
-        return "appointment-status";
-    }
+    return status.toLowerCase();
   }
 
   async function handleStatusUpdate(
     booking: Booking,
     status: "CONFIRMED" | "COMPLETED"
   ) {
-    if (!selectedBusinessId) {
-      return;
-    }
-
-    setUpdatingBookingId(booking.id);
-    setError("");
-    setMessage("");
-
     try {
-      const updatedBooking =
-        await updateBookingStatus(
-          booking.id,
-          selectedBusinessId,
-          status
-        );
+      setUpdatingBookingId(booking.id);
+      setError("");
 
-      setBookings((currentBookings) =>
-        currentBookings.map((item) =>
-          item.id === updatedBooking.id
-            ? {
-                ...item,
-                ...updatedBooking,
-              }
-            : item
+      if (selectedBusinessId === null) {
+        toast.error("Please select a business first.");
+        return;
+}
+
+const updatedBooking = await updateBookingStatus(
+  booking.id,
+  String(selectedBusinessId),
+  status
+);
+
+      setBookings((current) =>
+        current.map((item) =>
+          item.id === booking.id ? updatedBooking : item
         )
       );
 
       if (status === "CONFIRMED") {
-        setMessage(
-          "Appointment confirmed successfully."
-        );
+        toast.success("Appointment confirmed successfully.");
+      } else {
+        toast.success("Appointment marked as completed.");
       }
+    } catch (err: any) {
+      const message =
+        err?.message || "Failed to update appointment.";
 
-      if (status === "COMPLETED") {
-        setMessage(
-          "Appointment marked as completed."
-        );
-      }
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to update appointment"
-      );
+      toast.error(message);
     } finally {
-      setUpdatingBookingId("");
+      setUpdatingBookingId(null);
     }
   }
 
   async function handleCancel(booking: Booking) {
-    if (!selectedBusinessId) {
-      return;
-    }
-
-    setUpdatingBookingId(booking.id);
-    setError("");
-    setMessage("");
-
     try {
-      const data = await import(
-        "../../services/api"
-      );
+      setUpdatingBookingId(booking.id);
+      setError("");
 
-      await data.apiRequest(
-        `/bookings/${booking.id}/cancel`,
-        {
-          method: "PUT",
-        }
-      );
+      const { apiRequest } = await import("../../services/api");
 
-      setBookings((currentBookings) =>
-        currentBookings.map((item) =>
+      await apiRequest(`/bookings/${booking.id}/cancel`, {
+        method: "PUT",
+      });
+
+      setBookings((current) =>
+        current.map((item) =>
           item.id === booking.id
-            ? {
-                ...item,
-                status: "CANCELLED",
-              }
+            ? { ...item, status: "CANCELLED" }
             : item
         )
       );
 
-      setMessage(
-        "Appointment cancelled successfully."
-      );
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to cancel appointment"
-      );
+      toast.success("Appointment cancelled successfully.");
+    } catch (err: any) {
+      const message =
+        err?.message || "Failed to cancel appointment.";
+
+      toast.error(message);
     } finally {
-      setUpdatingBookingId("");
+      setUpdatingBookingId(null);
     }
   }
 
   const selectedBusiness = businesses.find(
-    (business) =>
-      business.id === selectedBusinessId
+    (business) => business.id === selectedBusinessId
   );
 
+  const totalAppointments = bookings.length;
+
+  const pendingAppointments = bookings.filter(
+    (booking) => booking.status === "PENDING"
+  ).length;
+
+  const confirmedAppointments = bookings.filter(
+    (booking) => booking.status === "CONFIRMED"
+  ).length;
+
+  const completedAppointments = bookings.filter(
+    (booking) => booking.status === "COMPLETED"
+  ).length;
+
+  if (error && !user) {
+    return (
+      <main className="owner-appointments-page">
+        <div className="appointments-error-page">
+          <div className="appointments-error-card">
+            <div className="appointments-error-icon">
+              <AiOutlineClose />
+            </div>
+
+            <h1>Access unavailable</h1>
+            <p>{error}</p>
+
+            <Link
+              href="/login"
+              className="appointments-error-button"
+            >
+              Go to Login
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <main className="dashboard-page">
-
-      {/* ---------- Navbar ---------- */}
-
-      <nav className="navbar">
-
-        <Link href="/" className="logo">
-          Slotify
+    <main className="owner-appointments-page">
+      {/* SIDEBAR */}
+      <aside className="appointments-sidebar">
+        <Link href="/dashboard" className="appointments-logo">
+          <span className="appointments-logo-mark">S</span>
+          <span>Slotify</span>
         </Link>
 
-        <div className="nav-links">
+        <div className="appointments-sidebar-section">
+          <span className="appointments-sidebar-label">
+            WORKSPACE
+          </span>
 
-          <Link href="/dashboard">
-            Dashboard
-          </Link>
-
-          <Link href="/owner/businesses">
-            My Businesses
-          </Link>
-
-          <Link href="/owner/services">
-            Services
-          </Link>
-
-          <Link href="/owner/availability">
-            Availability
-          </Link>
-
-          <Link href="/owner/appointments">
-            Appointments
-          </Link>
-
-          <button
-            onClick={handleLogout}
-            className="logout-button"
-          >
-            Logout
-          </button>
-
-        </div>
-
-      </nav>
-
-
-      {/* ---------- Hero ---------- */}
-
-      <section className="dashboard-hero">
-
-        <div>
-
-          <p className="eyebrow">
-            BUSINESS OWNER
-          </p>
-
-          <h1>
-            Appointments
-          </h1>
-
-          <p>
-            Review customer bookings and manage
-            appointment confirmations and completion.
-          </p>
-
-        </div>
-
-      </section>
-
-
-      {/* ---------- Main Content ---------- */}
-
-      <section className="businesses-section">
-
-        {/* Business Selector */}
-
-        <div className="section-heading">
-
-          <p className="eyebrow">
-            MANAGE APPOINTMENTS
-          </p>
-
-          <h2>
-            Choose a business
-          </h2>
-
-          <p>
-            Select which business you want to
-            manage customer appointments for.
-          </p>
-
-        </div>
-
-
-        {loadingBusinesses ? (
-          <div className="business-state">
-            Loading businesses...
-          </div>
-        ) : businesses.length === 0 ? (
-
-          <div className="business-state">
-            You do not have any businesses yet.
-            Create a business first.
-          </div>
-
-        ) : (
-
-          <div className="appointment-selector-card">
-
-            <label>
-              Business
-            </label>
-
-            <select
-              value={selectedBusinessId}
-              onChange={(event) =>
-                setSelectedBusinessId(
-                  event.target.value
-                )
-              }
+          <nav className="appointments-sidebar-nav">
+            <Link
+              href="/owner/businesses"
+              className="appointments-sidebar-link"
             >
+              <AiOutlineShop />
+              <span>My Businesses</span>
+            </Link>
 
-              {businesses.map((business) => (
-                <option
-                  key={business.id}
-                  value={business.id}
-                >
-                  {business.name}
-                </option>
-              ))}
+            <Link
+              href="/owner/services"
+              className="appointments-sidebar-link"
+            >
+              <AiOutlineAppstore />
+              <span>Manage Services</span>
+            </Link>
 
-            </select>
+            <Link
+              href="/owner/availability"
+              className="appointments-sidebar-link"
+            >
+              <AiOutlineClockCircle />
+              <span>Availability</span>
+            </Link>
 
-          </div>
+            <Link
+              href="/owner/appointments"
+              className="appointments-sidebar-link active"
+            >
+              <AiOutlineCalendar />
+              <span>Appointments</span>
+            </Link>
+          </nav>
+        </div>
 
-        )}
+        <div className="appointments-sidebar-section appointments-sidebar-section-lower">
+          <span className="appointments-sidebar-label">
+            QUICK ACCESS
+          </span>
 
+          <nav className="appointments-sidebar-nav">
+            <Link
+              href="/dashboard"
+              className="appointments-sidebar-link"
+            >
+              <AiOutlineAppstore />
+              <span>Customer Dashboard</span>
+            </Link>
+          </nav>
+        </div>
 
-        {/* Selected Business */}
-
-        {selectedBusiness && (
-          <div className="appointment-business-banner">
-
-            <div className="appointment-business-icon">
-              🏢
-            </div>
-
-            <div>
-              <p className="eyebrow">
-                MANAGING APPOINTMENTS FOR
-              </p>
-
-              <h2>
-                {selectedBusiness.name}
-              </h2>
-
-              <p>
-                {selectedBusiness.category}
-                {" • "}
-                {selectedBusiness.location}
-              </p>
-            </div>
-
-          </div>
-        )}
-
-
-        {/* Messages */}
-
-        {message && (
-          <div className="appointment-message success">
-            {message}
-          </div>
-        )}
-
-        {error && (
-          <div className="appointment-message error">
-            {error}
-          </div>
-        )}
-
-
-        {/* Appointment Heading */}
-
-        {selectedBusiness && (
-          <div className="section-heading appointment-heading">
-
-            <p className="eyebrow">
-              CUSTOMER BOOKINGS
-            </p>
-
-            <h2>
-              Appointments
-            </h2>
-
-            <p>
-              Confirm pending bookings, mark
-              confirmed appointments as completed,
-              or cancel appointments when necessary.
-            </p>
-
-          </div>
-        )}
-
-
-        {/* Loading */}
-
-        {loadingBookings && (
-          <div className="business-state">
-            Loading appointments...
-          </div>
-        )}
-
-
-        {/* Empty */}
-
-        {!loadingBookings &&
-          selectedBusiness &&
-          bookings.length === 0 && (
-
-            <div className="empty-appointments-card">
-
-              <div className="empty-appointments-icon">
-                📅
+        <div className="appointments-sidebar-bottom">
+          {user && (
+            <div className="appointments-user">
+              <div className="appointments-user-avatar">
+                {user.name?.charAt(0).toUpperCase()}
               </div>
 
-              <h3>
-                No appointments yet
-              </h3>
+              <div className="appointments-user-info">
+                <strong>{user.name}</strong>
+                <span>Business Owner</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="appointments-logout-icon"
+                aria-label="Logout"
+                title="Logout"
+              >
+                <AiOutlineLogout />
+              </button>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* MAIN */}
+      <section className="appointments-main">
+        <header className="appointments-topbar">
+          <div className="appointments-breadcrumb">
+            <span>Owner</span>
+            <span>/</span>
+            <strong>Appointments</strong>
+          </div>
+
+          <Link
+            href="/dashboard"
+            className="appointments-topbar-link"
+          >
+            Customer Dashboard
+          </Link>
+        </header>
+
+        <div className="appointments-content">
+          {/* PAGE HEADER */}
+          <div className="appointments-page-header">
+            <div>
+              <div className="appointments-eyebrow">
+                <span className="appointments-header-icon">
+                  <AiOutlineCalendar />
+                </span>
+                BUSINESS MANAGEMENT
+              </div>
+
+              <h1>Appointments</h1>
 
               <p>
-                Customer bookings for this business
-                will appear here.
+                Review and manage appointments booked with your
+                business.
               </p>
+            </div>
+          </div>
 
+          {/* BUSINESS SELECTOR */}
+          <div className="appointments-selector-card">
+            <div className="appointments-selector-info">
+              <div className="appointments-selector-icon">
+                <AiOutlineShop />
+              </div>
+
+              <div>
+                <span className="appointments-selector-label">
+                  MANAGE BUSINESS
+                </span>
+
+                <strong>
+                  Select a business to view appointments
+                </strong>
+              </div>
+            </div>
+
+            {loadingBusinesses ? (
+              <div className="appointments-selector-loading">
+                Loading businesses...
+              </div>
+            ) : businesses.length > 0 ? (
+              <select
+                value={selectedBusinessId ?? ""}
+                onChange={(event) =>
+                  setSelectedBusinessId(event.target.value || null) }
+                className="appointments-selector"
+              >
+                {businesses.map((business) => (
+                  <option
+                    key={business.id}
+                    value={business.id}
+                  >
+                    {business.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <Link
+                href="/owner/businesses"
+                className="appointments-create-business-button"
+              >
+                Create Business
+              </Link>
+            )}
+          </div>
+
+          {/* SELECTED BUSINESS */}
+          {selectedBusiness && (
+            <div className="appointments-selected-banner">
+              <div className="appointments-selected-icon">
+                <AiOutlineShop />
+              </div>
+
+              <div className="appointments-selected-info">
+                <span>APPOINTMENTS FOR</span>
+
+                <h2>{selectedBusiness.name}</h2>
+
+                <div className="appointments-selected-meta">
+                  {selectedBusiness.category && (
+                    <span>{selectedBusiness.category}</span>
+                  )}
+
+                  {selectedBusiness.location && (
+                    <>
+                      <span className="appointments-meta-divider">
+                        •
+                      </span>
+
+                      <span>
+                        <AiOutlineEnvironment />
+                        {selectedBusiness.location}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
+          {/* ERROR */}
+          {error && (
+            <div className="appointments-message appointments-message-error">
+              <AiOutlineClose />
+              <span>{error}</span>
+            </div>
+          )}
 
-        {/* Appointments */}
+          {selectedBusiness && (
+            <>
+              {/* STATS */}
+              <section className="appointments-stats">
+                <div className="appointments-stat">
+                  <div className="appointments-stat-icon">
+                    <AiOutlineCalendar />
+                  </div>
 
-        {!loadingBookings &&
-          bookings.length > 0 && (
+                  <div>
+                    <span>Total</span>
+                    <strong>{totalAppointments}</strong>
+                  </div>
+                </div>
 
-            <div className="appointments-grid">
+                <div className="appointments-stat">
+                  <div className="appointments-stat-icon">
+                    <AiOutlineClockCircle />
+                  </div>
 
-              {bookings.map((booking) => (
+                  <div>
+                    <span>Pending</span>
+                    <strong>{pendingAppointments}</strong>
+                  </div>
+                </div>
 
-                <article
-                  key={booking.id}
-                  className="appointment-card"
-                >
+                <div className="appointments-stat">
+                  <div className="appointments-stat-icon">
+                    <AiOutlineCheck />
+                  </div>
 
-                  <div className="appointment-card-top">
+                  <div>
+                    <span>Confirmed</span>
+                    <strong>{confirmedAppointments}</strong>
+                  </div>
+                </div>
 
-                    <div>
-                      <p className="appointment-service-label">
-                        SERVICE
-                      </p>
+                <div className="appointments-stat">
+                  <div className="appointments-stat-icon">
+                    <AiOutlineCheckCircle />
+                  </div>
 
-                      <h3>
-                        {booking.service_name ||
-                          "Service"}
-                      </h3>
-                    </div>
+                  <div>
+                    <span>Completed</span>
+                    <strong>{completedAppointments}</strong>
+                  </div>
+                </div>
+              </section>
 
-                    <span
-                      className={getStatusClass(
-                        booking.status
-                      )}
-                    >
-                      {booking.status}
+              {/* APPOINTMENTS */}
+              <section className="appointments-section">
+                <div className="appointments-section-header">
+                  <div>
+                    <span className="appointments-section-eyebrow">
+                      BOOKING ACTIVITY
                     </span>
 
+                    <h2>Appointment History</h2>
                   </div>
 
+                  <span className="appointments-count">
+                    {totalAppointments}{" "}
+                    {totalAppointments === 1
+                      ? "appointment"
+                      : "appointments"}
+                  </span>
+                </div>
 
-                  <div className="appointment-details">
-
-                    <div className="appointment-detail">
-                      <span>
-                        👤
-                      </span>
-
-                      <div>
-                        <small>
-                          CUSTOMER
-                        </small>
-
-                        <strong>
-                          {booking.customer_name ||
-                            "Customer"}
-                        </strong>
-
-                        {booking.customer_email && (
-                          <p>
-                            {booking.customer_email}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-
-                    <div className="appointment-detail">
-                      <span>
-                        📅
-                      </span>
-
-                      <div>
-                        <small>
-                          DATE
-                        </small>
-
-                        <strong>
-                          {formatDate(
-                            booking.booking_date
-                          )}
-                        </strong>
-                      </div>
-                    </div>
-
-
-                    <div className="appointment-detail">
-                      <span>
-                        🕐
-                      </span>
-
-                      <div>
-                        <small>
-                          TIME
-                        </small>
-
-                        <strong>
-                          {formatTime(
-                            booking.start_time
-                          )}
-                          {" – "}
-                          {formatTime(
-                            booking.end_time
-                          )}
-                        </strong>
-                      </div>
-                    </div>
-
-
-                    <div className="appointment-detail">
-                      <span>
-                        💰
-                      </span>
-
-                      <div>
-                        <small>
-                          PRICE
-                        </small>
-
-                        <strong>
-                          {booking.price !==
-                          undefined
-                            ? `PKR ${booking.price}`
-                            : "—"}
-                        </strong>
-                      </div>
-                    </div>
-
+                {loadingBookings ? (
+                  <div className="appointments-loading-card">
+                    <div className="appointments-loading-spinner" />
+                    <p>Loading appointments...</p>
                   </div>
-
-
-                  {/* Actions */}
-
-                  {booking.status === "PENDING" && (
-
-                    <div className="appointment-actions">
-
-                      <button
-                        className="confirm-appointment-button"
-                        disabled={
-                          updatingBookingId ===
-                          booking.id
-                        }
-                        onClick={() =>
-                          handleStatusUpdate(
-                            booking,
-                            "CONFIRMED"
-                          )
-                        }
-                      >
-                        {updatingBookingId ===
-                        booking.id
-                          ? "Updating..."
-                          : "✓ Confirm"}
-                      </button>
-
-                      <button
-                        className="cancel-appointment-button"
-                        disabled={
-                          updatingBookingId ===
-                          booking.id
-                        }
-                        onClick={() =>
-                          handleCancel(booking)
-                        }
-                      >
-                        Cancel
-                      </button>
-
+                ) : bookings.length === 0 ? (
+                  <div className="appointments-empty-card">
+                    <div className="appointments-empty-icon">
+                      <AiOutlineCalendar />
                     </div>
-                  )}
 
+                    <h3>No appointments yet</h3>
 
-                  {booking.status === "CONFIRMED" && (
+                    <p>
+                      When customers book services with this
+                      business, their appointments will appear
+                      here.
+                    </p>
 
-                    <div className="appointment-actions">
+                    <Link
+                      href={`/businesses/${selectedBusiness.id}`}
+                      className="appointments-empty-button"
+                    >
+                      View Business
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="appointments-list">
+                    {bookings.map((booking) => {
+                      const isUpdating =
+                        updatingBookingId === booking.id;
 
-                      <button
-                        className="complete-appointment-button"
-                        disabled={
-                          updatingBookingId ===
-                          booking.id
-                        }
-                        onClick={() =>
-                          handleStatusUpdate(
-                            booking,
-                            "COMPLETED"
-                          )
-                        }
-                      >
-                        {updatingBookingId ===
-                        booking.id
-                          ? "Updating..."
-                          : "✓ Mark Completed"}
-                      </button>
+                      return (
+                        <article
+                          key={booking.id}
+                          className="appointment-card"
+                        >
+                          {/* CARD HEADER */}
+                          <div className="appointment-card-header">
+                            <div className="appointment-service">
+                              <span className="appointment-service-label">
+                                SERVICE
+                              </span>
 
-                      <button
-                        className="cancel-appointment-button"
-                        disabled={
-                          updatingBookingId ===
-                          booking.id
-                        }
-                        onClick={() =>
-                          handleCancel(booking)
-                        }
-                      >
-                        Cancel
-                      </button>
+                              <h3>
+                                {booking.service_name ||
+                                  "Service"}
+                              </h3>
+                            </div>
 
-                    </div>
-                  )}
+                            <span
+                              className={`appointment-status ${getStatusClass(
+                                booking.status
+                              )}`}
+                            >
+                              {booking.status === "PENDING" && (
+                                <AiOutlineClockCircle />
+                              )}
 
+                              {booking.status === "CONFIRMED" && (
+                                <AiOutlineCheck />
+                              )}
 
-                  {booking.status === "COMPLETED" && (
+                              {booking.status === "COMPLETED" && (
+                                <AiOutlineCheckCircle />
+                              )}
 
-                    <div className="appointment-completed-note">
-                      ✓ This appointment has been
-                      completed.
-                    </div>
-                  )}
+                              {booking.status === "CANCELLED" && (
+                                <AiOutlineClose />
+                              )}
 
+                              {booking.status}
+                            </span>
+                          </div>
 
-                  {booking.status === "CANCELLED" && (
+                          {/* DETAILS */}
+                          <div className="appointment-details">
+                            <div className="appointment-detail">
+                              <div className="appointment-detail-icon">
+                                <AiOutlineUser />
+                              </div>
 
-                    <div className="appointment-cancelled-note">
-                      This appointment was cancelled.
-                    </div>
-                  )}
+                              <div>
+                                <span className="appointment-detail-label">
+                                  CUSTOMER
+                                </span>
 
-                </article>
+                                <strong className="appointment-detail-value">
+                                  {booking.customer_name ||
+                                    "Customer"}
+                                </strong>
+                              </div>
+                            </div>
 
-              ))}
+                            <div className="appointment-detail">
+                              <div className="appointment-detail-icon">
+                                <AiOutlineCalendar />
+                              </div>
 
-            </div>
+                              <div>
+                                <span className="appointment-detail-label">
+                                  DATE
+                                </span>
+
+                                <strong className="appointment-detail-value">
+                                  {formatDate(
+                                    booking.booking_date
+                                  )}
+                                </strong>
+                              </div>
+                            </div>
+
+                            <div className="appointment-detail">
+                              <div className="appointment-detail-icon">
+                                <AiOutlineClockCircle />
+                              </div>
+
+                              <div>
+                                <span className="appointment-detail-label">
+                                  TIME
+                                </span>
+
+                                <strong className="appointment-detail-value">
+                                  {formatTime(
+                                    booking.start_time
+                                  )}
+                                </strong>
+
+                                {booking.duration && (
+                                  <span className="appointment-detail-subtext">
+                                    {booking.duration} min
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="appointment-detail">
+                              <div className="appointment-detail-icon">
+                                <span className="appointment-currency">
+                                  ₨
+                                </span>
+                              </div>
+
+                              <div>
+                                <span className="appointment-detail-label">
+                                  PRICE
+                                </span>
+
+                                <strong className="appointment-detail-value">
+                                  ₨{" "}
+                                  {Number(
+                                    booking.price || 0
+                                  ).toLocaleString()}
+                                </strong>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* ACTIONS */}
+                          {(booking.status === "PENDING" ||
+                            booking.status === "CONFIRMED") && (
+                            <div className="appointment-actions">
+                              {booking.status === "PENDING" && (
+                                <button
+                                  type="button"
+                                  className="appointment-action-button appointment-confirm-button"
+                                  disabled={isUpdating}
+                                  onClick={() =>
+                                    handleStatusUpdate(
+                                      booking,
+                                      "CONFIRMED"
+                                    )
+                                  }
+                                >
+                                  <AiOutlineCheck />
+
+                                  {isUpdating
+                                    ? "Updating..."
+                                    : "Confirm"}
+                                </button>
+                              )}
+
+                              {booking.status === "CONFIRMED" && (
+                                <button
+                                  type="button"
+                                  className="appointment-action-button appointment-complete-button"
+                                  disabled={isUpdating}
+                                  onClick={() =>
+                                    handleStatusUpdate(
+                                      booking,
+                                      "COMPLETED"
+                                    )
+                                  }
+                                >
+                                  <AiOutlineCheckCircle />
+
+                                  {isUpdating
+                                    ? "Updating..."
+                                    : "Mark Completed"}
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                className="appointment-action-button appointment-cancel-button"
+                                disabled={isUpdating}
+                                onClick={() =>
+                                  handleCancel(booking)
+                                }
+                              >
+                                <AiOutlineClose />
+
+                                {isUpdating
+                                  ? "Updating..."
+                                  : "Cancel"}
+                              </button>
+                            </div>
+                          )}
+
+                          {booking.status === "COMPLETED" && (
+                            <div className="appointment-note appointment-note-completed">
+                              <AiOutlineCheckCircle />
+
+                              <span>
+                                This appointment has been
+                                completed.
+                              </span>
+                            </div>
+                          )}
+
+                          {booking.status === "CANCELLED" && (
+                            <div className="appointment-note appointment-note-cancelled">
+                              <AiOutlineClose />
+
+                              <span>
+                                This appointment was cancelled.
+                              </span>
+                            </div>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            </>
           )}
+        </div>
 
+        <footer className="appointments-page-footer">
+          <span>Slotify</span>
+          <span>•</span>
+          <span>Appointment Management</span>
+        </footer>
       </section>
-
     </main>
   );
 }

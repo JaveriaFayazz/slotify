@@ -1,539 +1,576 @@
 "use client";
 
+import {
+  AiOutlineArrowLeft,
+  AiOutlineCalendar,
+  AiOutlineCheckCircle,
+  AiOutlineClockCircle,
+  AiOutlineEnvironment,
+  AiOutlineRight,
+  AiOutlineShop,
+} from "react-icons/ai";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import {
+  getAllBusinesses,
   Business,
-  getMyBusinesses,
-  updateBusiness,
 } from "../../../services/business.service";
 
 import {
-  getStoredUser,
-  logout,
-  User,
-} from "../../../services/auth.service";
+  getBusinessServices,
+  Service,
+} from "../../../services/service.service";
 
-export default function ManageBusinessPage() {
+import {
+  getAvailableSlots,
+  createBooking,
+} from "../../../services/booking.service";
+
+export default function BookingPage() {
   const params = useParams();
-  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const businessId = params.id as string;
+  const businessId = String(params.id);
+  const serviceId = searchParams.get("serviceId");
 
-  const [user, setUser] = useState<User | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
+  const [service, setService] = useState<Service | null>(null);
+
+  const [bookingDate, setBookingDate] = useState("");
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [selectedTime, setSelectedTime] = useState("");
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [booking, setBooking] = useState(false);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [location, setLocation] = useState("");
-  const [category, setCategory] = useState("");
-
+  // Load business and selected service
   useEffect(() => {
-    const storedUser = getStoredUser();
+    async function loadData() {
+      try {
+        setLoading(true);
+        setError("");
 
-    if (!storedUser) {
-      setError("Please log in first.");
-      setLoading(false);
-      return;
-    }
+        if (!serviceId) {
+          setError("No service was selected.");
+          return;
+        }
 
-    setUser(storedUser);
+        const businesses = await getAllBusinesses();
 
-    if (storedUser.role !== "OWNER") {
-      setError(
-        "This page is only available to business owners."
-      );
-      setLoading(false);
-      return;
-    }
-
-    loadBusiness();
-  }, [businessId]);
-
-  async function loadBusiness() {
-    try {
-      setLoading(true);
-      setError("");
-
-      const businesses = await getMyBusinesses();
-
-      const foundBusiness = businesses.find(
-        (item) => item.id === businessId
-      );
-
-      if (!foundBusiness) {
-        setError(
-          "Business not found or you do not have permission to manage it."
+        const selectedBusiness = businesses.find(
+          (item) => item.id === businessId
         );
+
+        if (!selectedBusiness) {
+          setError("Business not found.");
+          return;
+        }
+
+        setBusiness(selectedBusiness);
+
+        const services = await getBusinessServices(businessId);
+
+        const selectedService = services.find(
+          (item) => item.id === serviceId
+        );
+
+        if (!selectedService) {
+          setError("Service not found.");
+          return;
+        }
+
+        setService(selectedService);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load booking information."
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, [businessId, serviceId]);
+
+  // Load available slots when date changes
+  useEffect(() => {
+    async function loadAvailableSlots() {
+      if (!bookingDate || !serviceId) {
+        setAvailableSlots([]);
+        setSelectedTime("");
         return;
       }
 
-      setBusiness(foundBusiness);
+      try {
+        setLoadingSlots(true);
+        setError("");
+        setSuccess("");
+        setSelectedTime("");
 
-      setName(foundBusiness.name);
-      setDescription(foundBusiness.description);
-      setLocation(foundBusiness.location);
-      setCategory(foundBusiness.category);
-    } catch (err) {
-      console.error("Failed to load business:", err);
+        const slots = await getAvailableSlots(
+          serviceId,
+          bookingDate
+        );
 
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to load business."
-      );
-    } finally {
-      setLoading(false);
+        setAvailableSlots(slots);
+      } catch (err) {
+        setAvailableSlots([]);
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load available times."
+        );
+      } finally {
+        setLoadingSlots(false);
+      }
     }
-  }
 
-  async function handleSaveChanges(
-    event: FormEvent<HTMLFormElement>
-  ) {
-    event.preventDefault();
+    loadAvailableSlots();
+  }, [bookingDate, serviceId]);
 
-    setError("");
-    setSuccess("");
-
-    if (
-      !name.trim() ||
-      !description.trim() ||
-      !location.trim() ||
-      !category.trim()
-    ) {
-      setError("Please fill in all fields.");
+  async function handleBooking() {
+    if (!serviceId || !bookingDate || !selectedTime) {
+      setError("Please select a date and time.");
       return;
     }
 
     try {
-      setSaving(true);
+      setBooking(true);
+      setError("");
+      setSuccess("");
 
-      const updatedBusiness = await updateBusiness(
-        businessId,
-        {
-          name: name.trim(),
-          description: description.trim(),
-          location: location.trim(),
-          category: category.trim(),
-        }
+      await createBooking(
+        serviceId,
+        bookingDate,
+        selectedTime
       );
-
-      setBusiness(updatedBusiness);
 
       setSuccess(
-        "Business information updated successfully."
+        "Your booking has been created successfully!"
       );
-    } catch (err) {
-      console.error("Update business error:", err);
 
+      const updatedSlots = await getAvailableSlots(
+        serviceId,
+        bookingDate
+      );
+
+      setAvailableSlots(updatedSlots);
+      setSelectedTime("");
+    } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to update business."
+          : "Failed to create booking."
       );
     } finally {
-      setSaving(false);
+      setBooking(false);
     }
   }
 
-  function handleLogout() {
-    logout();
-    window.location.href = "/login";
-  }
-
+  // Loading state
   if (loading) {
     return (
-      <main className="manage-business-page">
-        <div className="manage-loading">
-          Loading business...
-        </div>
-      </main>
-    );
-  }
-
-  if (!user) {
-    return (
-      <main className="manage-business-page">
-        <div className="manage-message error">
-          {error || "Please log in first."}
-        </div>
-      </main>
-    );
-  }
-
-  if (user.role !== "OWNER") {
-    return (
-      <main className="manage-business-page">
-
-        <nav className="manage-navbar">
-
-          <Link href="/" className="manage-logo">
+      <main className="booking-saas-page">
+        <nav className="booking-navbar">
+          <Link href="/" className="booking-logo">
+            <span className="booking-logo-mark">S</span>
             Slotify
           </Link>
 
-          <div className="manage-nav-links">
-
-            <Link href="/dashboard">
-              Dashboard
-            </Link>
-
-            <button
-              onClick={handleLogout}
-              className="manage-logout"
-            >
-              Logout
-            </button>
-
+          <div className="booking-nav-links">
+            <Link href="/dashboard">Dashboard</Link>
+            <Link href="/bookings">My Bookings</Link>
           </div>
-
         </nav>
 
-        <div className="manage-message error">
-          This page is only available to business owners.
+        <div className="booking-loading">
+          <div className="booking-loading-card">
+            <AiOutlineClockCircle />
+            <h2>Loading booking information</h2>
+            <p>Please wait while we prepare your appointment.</p>
+          </div>
         </div>
-
       </main>
     );
   }
 
-  if (!business) {
+  // Error state
+  if (error && (!business || !service)) {
     return (
-      <main className="manage-business-page">
-
-        <nav className="manage-navbar">
-
-          <Link href="/" className="manage-logo">
+      <main className="booking-saas-page">
+        <nav className="booking-navbar">
+          <Link href="/" className="booking-logo">
+            <span className="booking-logo-mark">S</span>
             Slotify
           </Link>
 
-          <div className="manage-nav-links">
-
-            <Link href="/dashboard">
-              Dashboard
-            </Link>
-
-            <Link href="/owner/businesses">
-              My Businesses
-            </Link>
-
-            <button
-              onClick={handleLogout}
-              className="manage-logout"
-            >
-              Logout
-            </button>
-
+          <div className="booking-nav-links">
+            <Link href="/dashboard">Dashboard</Link>
+            <Link href="/bookings">My Bookings</Link>
           </div>
-
         </nav>
 
-        <section className="manage-content">
+        <div className="booking-error-page">
+          <div className="booking-error-card">
+            <div className="booking-error-icon">!</div>
 
-          <div className="manage-message error">
-            {error || "Business not found."}
+            <h2>Unable to load booking</h2>
+            <p>{error}</p>
+
+            <Link
+              href={`/businesses/${businessId}`}
+              className="booking-primary-button"
+            >
+              <AiOutlineArrowLeft />
+              Back to Services
+            </Link>
           </div>
-
-          <Link
-            href="/owner/businesses"
-            className="back-business-button"
-          >
-            ← Back to My Businesses
-          </Link>
-
-        </section>
-
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="manage-business-page">
-
-      {/* NAVBAR */}
-
-      <nav className="manage-navbar">
-
-        <Link href="/" className="manage-logo">
+    <main className="booking-saas-page">
+      {/* Navigation */}
+      <nav className="booking-navbar">
+        <Link href="/" className="booking-logo">
+          <span className="booking-logo-mark">S</span>
           Slotify
         </Link>
 
-        <div className="manage-nav-links">
-
-          <Link href="/dashboard">
-            Dashboard
-          </Link>
-
-          <Link href="/owner/businesses">
-            My Businesses
-          </Link>
-
-          <Link href="/owner/services">
-            Services
-          </Link>
-
-          <button
-            onClick={handleLogout}
-            className="manage-logout"
-          >
-            Logout
-          </button>
-
+        <div className="booking-nav-links">
+          <Link href="/dashboard">Dashboard</Link>
+          <Link href="/bookings">My Bookings</Link>
         </div>
-
       </nav>
 
-      {/* PAGE CONTENT */}
+      {/* Main */}
+      <div className="booking-main">
+        <div className="booking-content">
 
-      <section className="manage-content">
+          {/* Back */}
+          <Link
+            href={`/businesses/${businessId}`}
+            className="booking-back-link"
+          >
+            <AiOutlineArrowLeft />
+            Back to Services
+          </Link>
 
-        <Link
-          href="/owner/businesses"
-          className="back-link"
-        >
-          ← Back to My Businesses
-        </Link>
+          {/* Header */}
+          <div className="booking-page-header">
+            <div>
+              <p className="booking-eyebrow">
+                BOOK APPOINTMENT
+              </p>
 
-        {/* HEADER */}
+              <h1>
+                Schedule your appointment
+              </h1>
 
-        <div className="manage-header">
-
-          <div>
-
-            <span className="manage-eyebrow">
-              BUSINESS MANAGEMENT
-            </span>
-
-            <h1>
-              {business.name}
-            </h1>
-
-            <p>
-              Update your business information and
-              keep your Slotify listing accurate.
-            </p>
-
+              <p className="booking-header-description">
+                Choose a date and time that works best for you.
+              </p>
+            </div>
           </div>
 
-          <div className="manage-business-icon">
-            🏢
-          </div>
+          {/* Booking layout */}
+          <div className="booking-layout">
 
-        </div>
+            {/* Left column */}
+            <section className="booking-service-card">
 
-        {/* MAIN GRID */}
+              <div className="booking-service-icon">
+                <AiOutlineShop />
+              </div>
 
-        <div className="manage-grid">
+              <div className="booking-service-content">
+                <p className="booking-card-label">
+                  SERVICE
+                </p>
 
-          {/* BUSINESS DETAILS */}
-
-          <div className="manage-form-card">
-
-            <div className="manage-card-heading">
-
-              <span className="manage-card-icon">
-                ✏️
-              </span>
-
-              <div>
                 <h2>
-                  Business Information
+                  {service?.name}
                 </h2>
 
-                <p>
-                  Update the details customers see.
+                <p className="booking-business-name">
+                  {business?.name}
                 </p>
               </div>
 
-            </div>
+              <div className="booking-service-details">
 
-            <form onSubmit={handleSaveChanges}>
+                <div className="booking-detail">
+                  <AiOutlineClockCircle />
 
-              <div className="manage-form-group">
-
-                <label htmlFor="business-name">
-                  Business Name
-                </label>
-
-                <input
-                  id="business-name"
-                  type="text"
-                  value={name}
-                  onChange={(event) =>
-                    setName(event.target.value)
-                  }
-                  placeholder="Business name"
-                />
-
-              </div>
-
-              <div className="manage-form-group">
-
-                <label htmlFor="business-description">
-                  Description
-                </label>
-
-                <textarea
-                  id="business-description"
-                  value={description}
-                  onChange={(event) =>
-                    setDescription(event.target.value)
-                  }
-                  placeholder="Describe your business..."
-                  rows={6}
-                />
-
-              </div>
-
-              <div className="manage-form-row">
-
-                <div className="manage-form-group">
-
-                  <label htmlFor="business-location">
-                    Location
-                  </label>
-
-                  <input
-                    id="business-location"
-                    type="text"
-                    value={location}
-                    onChange={(event) =>
-                      setLocation(event.target.value)
-                    }
-                    placeholder="Business location"
-                  />
-
+                  <div>
+                    <span>Duration</span>
+                    <strong>
+                      {service?.duration} minutes
+                    </strong>
+                  </div>
                 </div>
 
-                <div className="manage-form-group">
+                <div className="booking-detail">
+                  <span className="booking-price-icon">
+                    PKR
+                  </span>
 
-                  <label htmlFor="business-category">
-                    Category
-                  </label>
+                  <div>
+                    <span>Price</span>
+                    <strong>
+                      PKR{" "}
+                      {Number(
+                        service?.price || 0
+                      ).toLocaleString()}
+                    </strong>
+                  </div>
+                </div>
+
+                {business?.location && (
+                  <div className="booking-detail">
+                    <AiOutlineEnvironment />
+
+                    <div>
+                      <span>Location</span>
+                      <strong>
+                        {business.location}
+                      </strong>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+              <div className="booking-service-note">
+                <AiOutlineCheckCircle />
+
+                <p>
+                  Your appointment will be confirmed
+                  after you complete the booking.
+                </p>
+              </div>
+
+            </section>
+
+            {/* Right column */}
+            <section className="booking-form-card">
+
+              {/* Step 1 */}
+              <div className="booking-step">
+
+                <div className="booking-step-heading">
+                  <div className="booking-step-number">
+                    01
+                  </div>
+
+                  <div>
+                    <h2>Choose a Date</h2>
+                    <p>
+                      Select the day for your appointment.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="booking-date-wrapper">
+                  <AiOutlineCalendar />
 
                   <input
-                    id="business-category"
-                    type="text"
-                    value={category}
-                    onChange={(event) =>
-                      setCategory(event.target.value)
+                    type="date"
+                    value={bookingDate}
+                    min={
+                      new Date()
+                        .toISOString()
+                        .split("T")[0]
                     }
-                    placeholder="Business category"
+                    onChange={(event) =>
+                      setBookingDate(event.target.value)
+                    }
+                    className="booking-date-input"
                   />
-
                 </div>
 
               </div>
 
+              {/* Step 2 */}
+              {bookingDate && (
+                <div className="booking-step">
+
+                  <div className="booking-step-heading">
+                    <div className="booking-step-number">
+                      02
+                    </div>
+
+                    <div>
+                      <h2>Choose a Time</h2>
+                      <p>
+                        Select one of the available appointment
+                        times.
+                      </p>
+                    </div>
+                  </div>
+
+                  {loadingSlots && (
+                    <div className="booking-slots-loading">
+                      <AiOutlineClockCircle />
+                      <span>
+                        Checking available times...
+                      </span>
+                    </div>
+                  )}
+
+                  {!loadingSlots &&
+                    availableSlots.length === 0 && (
+                      <div className="booking-empty-slots">
+                        <AiOutlineCalendar />
+
+                        <div>
+                          <strong>
+                            No available times
+                          </strong>
+
+                          <p>
+                            Try selecting another date.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                  {!loadingSlots &&
+                    availableSlots.length > 0 && (
+                      <div className="booking-time-grid">
+
+                        {availableSlots.map(
+                          (slot) => (
+                            <button
+                              key={slot}
+                              type="button"
+                              className={`booking-time-slot ${
+                                selectedTime === slot
+                                  ? "selected"
+                                  : ""
+                              }`}
+                              onClick={() => {
+                                setSelectedTime(slot);
+                                setSuccess("");
+                                setError("");
+                              }}
+                            >
+                              <AiOutlineClockCircle />
+                              {slot}
+
+                              {selectedTime === slot && (
+                                <AiOutlineCheckCircle />
+                              )}
+                            </button>
+                          )
+                        )}
+
+                      </div>
+                    )}
+
+                </div>
+              )}
+
+              {/* Messages */}
               {error && (
-                <div className="manage-form-message error">
-                  {error}
+                <div className="booking-message booking-message-error">
+                  <strong>Booking error</strong>
+                  <span>{error}</span>
                 </div>
               )}
 
               {success && (
-                <div className="manage-form-message success">
-                  {success}
+                <div className="booking-message booking-message-success">
+                  <AiOutlineCheckCircle />
+
+                  <div>
+                    <strong>Booking confirmed</strong>
+                    <span>{success}</span>
+                  </div>
                 </div>
               )}
 
-              <button
-                type="submit"
-                className="save-business-button"
-                disabled={saving}
-              >
-                {saving
-                  ? "Saving..."
-                  : "Save Changes →"}
-              </button>
+              {/* Summary */}
+              {bookingDate && selectedTime && !success && (
+                <div className="booking-summary">
 
-            </form>
+                  <div className="booking-summary-header">
+                    <span>YOUR APPOINTMENT</span>
+                  </div>
 
-          </div>
+                  <div className="booking-summary-row">
+                    <span>Date</span>
+                    <strong>{bookingDate}</strong>
+                  </div>
 
-          {/* QUICK ACTIONS */}
+                  <div className="booking-summary-row">
+                    <span>Time</span>
+                    <strong>{selectedTime}</strong>
+                  </div>
 
-          <div className="manage-side-column">
+                  <div className="booking-summary-row">
+                    <span>Service</span>
+                    <strong>{service?.name}</strong>
+                  </div>
 
-            <div className="manage-info-card">
+                </div>
+              )}
 
-              <span className="manage-side-icon">
-                🏷️
-              </span>
+              {/* Booking button */}
+              {bookingDate &&
+                availableSlots.length > 0 &&
+                !success && (
+                  <button
+                    type="button"
+                    onClick={handleBooking}
+                    disabled={!selectedTime || booking}
+                    className="booking-confirm-button"
+                  >
+                    {booking ? (
+                      <>
+                        <span className="booking-spinner" />
+                        Creating Booking...
+                      </>
+                    ) : selectedTime ? (
+                      <>
+                        Confirm Booking
+                        <AiOutlineRight />
+                      </>
+                    ) : (
+                      <>
+                        Select a Time
+                        <AiOutlineRight />
+                      </>
+                    )}
+                  </button>
+                )}
 
-              <h3>
-                Business Category
-              </h3>
+              {success && (
+                <Link
+                  href="/bookings"
+                  className="booking-view-button"
+                >
+                  View My Bookings
+                  <AiOutlineRight />
+                </Link>
+              )}
 
-              <div className="manage-category">
-                {business.category}
-              </div>
-
-              <p>
-                Your category helps customers understand
-                what type of business you operate.
-              </p>
-
-            </div>
-
-            <div className="manage-info-card">
-
-              <span className="manage-side-icon">
-                📍
-              </span>
-
-              <h3>
-                Business Location
-              </h3>
-
-              <p className="manage-location-text">
-                {business.location}
-              </p>
-
-              <p>
-                Customers can use this information
-                to identify where your business operates.
-              </p>
-
-            </div>
-
-            <div className="manage-services-card">
-
-              <div className="manage-services-icon">
-                ⚙️
-              </div>
-
-              <h3>
-                Manage Services
-              </h3>
-
-              <p>
-                Add and manage the services that
-                customers can book at this business.
-              </p>
-
-              <Link
-                href="/owner/services"
-                className="manage-services-button"
-              >
-                Manage Services →
-              </Link>
-
-            </div>
-
+            </section>
           </div>
 
         </div>
-
-      </section>
-
+      </div>
     </main>
   );
 }

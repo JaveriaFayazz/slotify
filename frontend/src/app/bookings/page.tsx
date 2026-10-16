@@ -1,5 +1,16 @@
 "use client";
 
+import {
+  AiOutlineArrowRight,
+  AiOutlineCalendar,
+  AiOutlineCheckCircle,
+  AiOutlineClockCircle,
+  AiOutlineEnvironment,
+  AiOutlineHistory,
+  AiOutlineLogout,
+  AiOutlineShop,
+  AiOutlineUser,
+} from "react-icons/ai";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -17,7 +28,6 @@ import {
 
 export default function MyBookingsPage() {
   const [user, setUser] = useState<User | null>(null);
-
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,13 +37,9 @@ export default function MyBookingsPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  // =========================================================
   // LOAD USER + BOOKINGS
-  // =========================================================
-
   useEffect(() => {
     const storedUser = getStoredUser();
-
     setUser(storedUser);
 
     async function loadBookings() {
@@ -42,7 +48,6 @@ export default function MyBookingsPage() {
         setError("");
 
         const response = await getMyBookings();
-
         setBookings(response.bookings);
       } catch (err) {
         setError(
@@ -58,24 +63,15 @@ export default function MyBookingsPage() {
     loadBookings();
   }, []);
 
-  // =========================================================
   // LOGOUT
-  // =========================================================
-
   function handleLogout() {
     logout();
-
     window.location.href = "/login";
   }
 
-  // =========================================================
   // FORMAT DATE
-  // =========================================================
-
   function formatDate(dateString: string) {
-    const date = new Date(
-      `${dateString}T00:00:00`
-    );
+    const date = new Date(`${dateString}T00:00:00`);
 
     return date.toLocaleDateString("en-US", {
       weekday: "short",
@@ -85,16 +81,13 @@ export default function MyBookingsPage() {
     });
   }
 
-  // =========================================================
   // FORMAT TIME
-  // =========================================================
-
   function formatTime(timeString: string) {
-    const [hours, minutes] =
-      timeString.split(":").map(Number);
+    const [hours, minutes] = timeString
+      .split(":")
+      .map(Number);
 
     const date = new Date();
-
     date.setHours(hours, minutes, 0, 0);
 
     return date.toLocaleTimeString("en-US", {
@@ -103,33 +96,27 @@ export default function MyBookingsPage() {
     });
   }
 
-  // =========================================================
   // STATUS CLASS
-  // =========================================================
-
   function getStatusClass(status: string) {
     switch (status) {
       case "PENDING":
-        return "customer-booking-status pending";
+        return "bookings-status pending";
 
       case "CONFIRMED":
-        return "customer-booking-status confirmed";
+        return "bookings-status confirmed";
 
       case "COMPLETED":
-        return "customer-booking-status completed";
+        return "bookings-status completed";
 
       case "CANCELLED":
-        return "customer-booking-status cancelled";
+        return "bookings-status cancelled";
 
       default:
-        return "customer-booking-status";
+        return "bookings-status";
     }
   }
 
-  // =========================================================
   // STATUS MESSAGE
-  // =========================================================
-
   function getStatusMessage(status: string) {
     switch (status) {
       case "PENDING":
@@ -149,10 +136,7 @@ export default function MyBookingsPage() {
     }
   }
 
-  // =========================================================
   // CANCEL BOOKING
-  // =========================================================
-
   async function handleCancel(booking: Booking) {
     const confirmed = window.confirm(
       "Are you sure you want to cancel this appointment?"
@@ -195,10 +179,7 @@ export default function MyBookingsPage() {
     }
   }
 
-  // =========================================================
   // COUNTS
-  // =========================================================
-
   const pendingCount = bookings.filter(
     (booking) => booking.status === "PENDING"
   ).length;
@@ -212,461 +193,475 @@ export default function MyBookingsPage() {
   ).length;
 
   return (
-    <main className="dashboard-page">
+    <main className="bookings-saas-page">
 
-      {/* =====================================================
-          NAVBAR
-          ===================================================== */}
+      {/* SIDEBAR */}
+      <aside className="bookings-sidebar">
 
-      <nav className="navbar">
+        <Link href="/" className="bookings-logo">
+          <span className="bookings-logo-mark">
+            S
+          </span>
 
-        <Link href="/" className="logo">
-          Slotify
+          <span>Slotify</span>
         </Link>
 
-        <div className="nav-links">
+        <div className="bookings-sidebar-section">
+          <span className="bookings-sidebar-label">
+            MENU
+          </span>
 
-          <Link href="/dashboard">
-            Dashboard
-          </Link>
+          <nav className="bookings-sidebar-nav">
 
-          <Link href="/bookings">
-            My Bookings
-          </Link>
+            <Link
+              href="/dashboard"
+              className="bookings-sidebar-link"
+            >
+              <AiOutlineShop />
+              <span>Dashboard</span>
+            </Link>
+
+            <Link
+              href="/bookings"
+              className="bookings-sidebar-link active"
+            >
+              <AiOutlineCalendar />
+              <span>My Bookings</span>
+            </Link>
+
+          </nav>
+        </div>
+
+        <div className="bookings-sidebar-bottom">
+
+          <div className="bookings-user">
+
+            <div className="bookings-user-avatar">
+              <AiOutlineUser />
+            </div>
+
+            <div className="bookings-user-info">
+              <strong>
+                {user?.name || "Customer"}
+              </strong>
+
+              <span>Customer</span>
+            </div>
+
+          </div>
 
           <button
+            type="button"
+            className="bookings-logout"
             onClick={handleLogout}
-            className="logout-button"
+            title="Logout"
           >
-            Logout
+            <AiOutlineLogout />
           </button>
 
         </div>
 
-      </nav>
+      </aside>
 
+      {/* MAIN CONTENT */}
+      <div className="bookings-main">
 
-      {/* =====================================================
-          HERO
-          ===================================================== */}
+        {/* TOP BAR */}
+        <header className="bookings-topbar">
 
-      <section className="dashboard-hero">
+          <div className="bookings-breadcrumb">
+            <span>Dashboard</span>
+            <AiOutlineArrowRight />
+            <strong>My Bookings</strong>
+          </div>
 
-        <div>
+          <Link
+            href="/dashboard"
+            className="bookings-dashboard-link"
+          >
+            Browse Businesses
+            <AiOutlineArrowRight />
+          </Link>
 
-          <p className="eyebrow">
-            CUSTOMER DASHBOARD
-          </p>
+        </header>
 
-          <h1>
-            My Bookings
-          </h1>
+        {/* PAGE HEADER */}
+        <section className="bookings-page-header">
 
-          <p>
-            {user?.name
-              ? `Hello ${user.name}, here are your appointments.`
-              : "View and manage your appointments."}
-          </p>
+          <div>
 
-        </div>
+            <p className="bookings-eyebrow">
+              APPOINTMENTS
+            </p>
 
-      </section>
+            <h1>
+              My Bookings
+            </h1>
 
-
-      {/* =====================================================
-          MAIN CONTENT
-          ===================================================== */}
-
-      <section className="businesses-section">
-
-        {/* =================================================
-            SUMMARY CARDS
-            ================================================= */}
-
-        {!loading && bookings.length > 0 && (
-
-          <div className="customer-booking-summary">
-
-            <div className="customer-summary-card">
-
-              <span className="customer-summary-number">
-                {bookings.length}
-              </span>
-
-              <span className="customer-summary-label">
-                Total Bookings
-              </span>
-
-            </div>
-
-
-            <div className="customer-summary-card">
-
-              <span className="customer-summary-number">
-                {pendingCount}
-              </span>
-
-              <span className="customer-summary-label">
-                Pending
-              </span>
-
-            </div>
-
-
-            <div className="customer-summary-card">
-
-              <span className="customer-summary-number">
-                {confirmedCount}
-              </span>
-
-              <span className="customer-summary-label">
-                Confirmed
-              </span>
-
-            </div>
-
-
-            <div className="customer-summary-card">
-
-              <span className="customer-summary-number">
-                {completedCount}
-              </span>
-
-              <span className="customer-summary-label">
-                Completed
-              </span>
-
-            </div>
+            <p>
+              {user?.name
+                ? `Hello ${user.name}, here's an overview of your appointments.`
+                : "View and manage your appointments."}
+            </p>
 
           </div>
+
+        </section>
+
+        {/* STATS */}
+        {!loading && bookings.length > 0 && (
+          <section className="bookings-stats">
+
+            <div className="bookings-stat-card">
+
+              <div className="bookings-stat-icon">
+                <AiOutlineHistory />
+              </div>
+
+              <div>
+                <span>Total Bookings</span>
+                <strong>{bookings.length}</strong>
+              </div>
+
+            </div>
+
+            <div className="bookings-stat-card">
+
+              <div className="bookings-stat-icon">
+                <AiOutlineClockCircle />
+              </div>
+
+              <div>
+                <span>Pending</span>
+                <strong>{pendingCount}</strong>
+              </div>
+
+            </div>
+
+            <div className="bookings-stat-card">
+
+              <div className="bookings-stat-icon">
+                <AiOutlineCheckCircle />
+              </div>
+
+              <div>
+                <span>Confirmed</span>
+                <strong>{confirmedCount}</strong>
+              </div>
+
+            </div>
+
+            <div className="bookings-stat-card">
+
+              <div className="bookings-stat-icon">
+                <AiOutlineCheckCircle />
+              </div>
+
+              <div>
+                <span>Completed</span>
+                <strong>{completedCount}</strong>
+              </div>
+
+            </div>
+
+          </section>
         )}
 
-
-        {/* =================================================
-            MESSAGES
-            ================================================= */}
-
+        {/* MESSAGES */}
         {message && (
-          <div className="customer-booking-message success">
-            {message}
+          <div className="bookings-alert success">
+            <AiOutlineCheckCircle />
+            <span>{message}</span>
           </div>
         )}
 
         {error && (
-          <div className="customer-booking-message error">
-            {error}
+          <div className="bookings-alert error">
+            <span className="bookings-alert-icon">
+              !
+            </span>
+            <span>{error}</span>
           </div>
         )}
 
+        {/* SECTION HEADER */}
+        <section className="bookings-history-section">
 
-        {/* =================================================
-            SECTION HEADING
-            ================================================= */}
+          <div className="bookings-section-header">
 
-        <div className="section-heading">
+            <div>
+              <p className="bookings-eyebrow">
+                YOUR ACTIVITY
+              </p>
 
-          <p className="eyebrow">
-            YOUR APPOINTMENTS
-          </p>
-
-          <h2>
-            Booking History
-          </h2>
-
-          <p>
-            Track the status of your appointments
-            and manage upcoming bookings.
-          </p>
-
-        </div>
-
-
-        {/* =================================================
-            LOADING
-            ================================================= */}
-
-        {loading && (
-          <div className="business-state">
-            Loading your bookings...
-          </div>
-        )}
-
-
-        {/* =================================================
-            EMPTY STATE
-            ================================================= */}
-
-        {!loading && bookings.length === 0 && (
-
-          <div className="customer-empty-bookings">
-
-            <div className="customer-empty-icon">
-              📅
+              <h2>
+                Booking History
+              </h2>
             </div>
 
-            <h3>
-              No bookings yet
-            </h3>
-
-            <p>
-              You haven't made any appointments yet.
-              Browse businesses and book a service
-              to get started.
-            </p>
-
-            <Link
-              href="/dashboard"
-              className="customer-browse-button"
-            >
-              Browse Businesses →
-            </Link>
+            {!loading && bookings.length > 0 && (
+              <span className="bookings-count">
+                {bookings.length}{" "}
+                {bookings.length === 1
+                  ? "appointment"
+                  : "appointments"}
+              </span>
+            )}
 
           </div>
-        )}
 
+          {/* LOADING */}
+          {loading && (
+            <div className="bookings-loading">
 
-        {/* =================================================
-            BOOKINGS
-            ================================================= */}
+              <AiOutlineClockCircle />
 
-        {!loading && bookings.length > 0 && (
+              <div>
+                <strong>
+                  Loading your bookings
+                </strong>
 
-          <div className="customer-bookings-grid">
+                <span>
+                  Please wait while we retrieve your appointments.
+                </span>
+              </div>
 
-            {bookings.map((booking) => (
+            </div>
+          )}
 
-              <article
-                key={booking.id}
-                className="customer-booking-card"
+          {/* EMPTY */}
+          {!loading && bookings.length === 0 && (
+            <div className="bookings-empty">
+
+              <div className="bookings-empty-icon">
+                <AiOutlineCalendar />
+              </div>
+
+              <h3>
+                No bookings yet
+              </h3>
+
+              <p>
+                You haven't made any appointments yet.
+                Browse businesses and book a service to
+                get started.
+              </p>
+
+              <Link
+                href="/dashboard"
+                className="bookings-browse-button"
               >
+                Browse Businesses
+                <AiOutlineArrowRight />
+              </Link>
 
-                {/* -----------------------------------------
-                    CARD HEADER
-                    ----------------------------------------- */}
+            </div>
+          )}
 
-                <div className="customer-booking-top">
+          {/* BOOKINGS */}
+          {!loading && bookings.length > 0 && (
+            <div className="bookings-list">
 
-                  <div>
+              {bookings.map((booking) => (
 
-                    <p className="customer-booking-label">
-                      SERVICE
-                    </p>
-
-                    <h3>
-                      {booking.service_name ||
-                        "Service"}
-                    </h3>
-
-                    <p className="customer-business-name">
-                      {booking.business_name ||
-                        "Business"}
-                    </p>
-
-                  </div>
-
-
-                  <span
-                    className={getStatusClass(
-                      booking.status
-                    )}
-                  >
-                    {booking.status}
-                  </span>
-
-                </div>
-
-
-                {/* -----------------------------------------
-                    DETAILS
-                    ----------------------------------------- */}
-
-                <div className="customer-booking-details">
-
-                  <div className="customer-booking-detail">
-
-                    <span>
-                      📅
-                    </span>
-
-                    <div>
-
-                      <small>
-                        DATE
-                      </small>
-
-                      <strong>
-                        {formatDate(
-                          booking.booking_date
-                        )}
-                      </strong>
-
-                    </div>
-
-                  </div>
-
-
-                  <div className="customer-booking-detail">
-
-                    <span>
-                      🕐
-                    </span>
-
-                    <div>
-
-                      <small>
-                        TIME
-                      </small>
-
-                      <strong>
-                        {formatTime(
-                          booking.start_time
-                        )}
-                        {" – "}
-                        {formatTime(
-                          booking.end_time
-                        )}
-                      </strong>
-
-                    </div>
-
-                  </div>
-
-
-                  <div className="customer-booking-detail">
-
-                    <span>
-                      ⏱
-                    </span>
-
-                    <div>
-
-                      <small>
-                        DURATION
-                      </small>
-
-                      <strong>
-                        {booking.duration
-                          ? `${booking.duration} min`
-                          : "—"}
-                      </strong>
-
-                    </div>
-
-                  </div>
-
-
-                  <div className="customer-booking-detail">
-
-                    <span>
-                      💰
-                    </span>
-
-                    <div>
-
-                      <small>
-                        PRICE
-                      </small>
-
-                      <strong>
-                        {booking.price !==
-                        undefined
-                          ? `PKR ${booking.price}`
-                          : "—"}
-                      </strong>
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-
-                {/* -----------------------------------------
-                    STATUS INFORMATION
-                    ----------------------------------------- */}
-
-                <div
-                  className={`customer-booking-status-message ${booking.status.toLowerCase()}`}
+                <article
+                  key={booking.id}
+                  className="bookings-card"
                 >
 
-                  <span>
-                    {booking.status === "PENDING" &&
-                      "⏳"}
+                  {/* CARD TOP */}
+                  <div className="bookings-card-top">
 
-                    {booking.status === "CONFIRMED" &&
-                      "✓"}
+                    <div className="bookings-card-service">
 
-                    {booking.status === "COMPLETED" &&
-                      "✓"}
+                      <div className="bookings-service-icon">
+                        <AiOutlineShop />
+                      </div>
 
-                    {booking.status === "CANCELLED" &&
-                      "×"}
-                  </span>
+                      <div>
+                        <p className="bookings-card-label">
+                          SERVICE
+                        </p>
 
-                  <p>
-                    {getStatusMessage(
-                      booking.status
-                    )}
-                  </p>
+                        <h3>
+                          {booking.service_name ||
+                            "Service"}
+                        </h3>
 
-                </div>
+                        <span>
+                          {booking.business_name ||
+                            "Business"}
+                        </span>
+                      </div>
 
+                    </div>
 
-                {/* -----------------------------------------
-                    ACTIONS
-                    ----------------------------------------- */}
-
-                {(booking.status === "PENDING" ||
-                  booking.status === "CONFIRMED") && (
-
-                  <div className="customer-booking-actions">
-
-                    <button
-                      className="customer-cancel-button"
-                      disabled={
-                        cancellingBookingId ===
-                        booking.id
-                      }
-                      onClick={() =>
-                        handleCancel(booking)
-                      }
+                    <span
+                      className={getStatusClass(
+                        booking.status
+                      )}
                     >
-                      {cancellingBookingId ===
-                      booking.id
-                        ? "Cancelling..."
-                        : "Cancel Appointment"}
-                    </button>
+                      {booking.status}
+                    </span>
 
                   </div>
-                )}
 
+                  {/* DETAILS */}
+                  <div className="bookings-card-details">
 
-                {booking.status === "COMPLETED" && (
+                    <div className="bookings-detail">
 
-                  <div className="customer-completed-note">
-                    ✓ Thank you for using Slotify.
+                      <AiOutlineCalendar />
+
+                      <div>
+                        <span>Date</span>
+
+                        <strong>
+                          {formatDate(
+                            booking.booking_date
+                          )}
+                        </strong>
+                      </div>
+
+                    </div>
+
+                    <div className="bookings-detail">
+
+                      <AiOutlineClockCircle />
+
+                      <div>
+                        <span>Time</span>
+
+                        <strong>
+                          {formatTime(
+                            booking.start_time
+                          )}
+                          {" – "}
+                          {formatTime(
+                            booking.end_time
+                          )}
+                        </strong>
+                      </div>
+
+                    </div>
+
+                    <div className="bookings-detail">
+
+                      <AiOutlineHistory />
+
+                      <div>
+                        <span>Duration</span>
+
+                        <strong>
+                          {booking.duration
+                            ? `${booking.duration} min`
+                            : "—"}
+                        </strong>
+                      </div>
+
+                    </div>
+
+                    <div className="bookings-detail">
+
+                      <span className="bookings-price-icon">
+                        PKR
+                      </span>
+
+                      <div>
+                        <span>Price</span>
+
+                        <strong>
+                          {booking.price !== undefined
+                            ? `PKR ${Number(
+                                booking.price
+                              ).toLocaleString()}`
+                            : "—"}
+                        </strong>
+                      </div>
+
+                    </div>
+
                   </div>
 
-                )}
+                  {/* STATUS MESSAGE */}
+                  <div
+                    className={`bookings-status-message ${booking.status.toLowerCase()}`}
+                  >
 
+                    <div className="bookings-status-message-icon">
 
-                {booking.status === "CANCELLED" && (
+                      {booking.status === "PENDING" && (
+                        <AiOutlineClockCircle />
+                      )}
 
-                  <div className="customer-cancelled-note">
-                    This booking is no longer active.
+                      {(booking.status === "CONFIRMED" ||
+                        booking.status === "COMPLETED") && (
+                        <AiOutlineCheckCircle />
+                      )}
+
+                      {booking.status === "CANCELLED" && (
+                        <span>×</span>
+                      )}
+
+                    </div>
+
+                    <p>
+                      {getStatusMessage(
+                        booking.status
+                      )}
+                    </p>
+
                   </div>
 
-                )}
+                  {/* ACTIONS */}
+                  {(booking.status === "PENDING" ||
+                    booking.status === "CONFIRMED") && (
 
-              </article>
+                    <div className="bookings-card-actions">
 
-            ))}
+                      <button
+                        type="button"
+                        className="bookings-cancel-button"
+                        disabled={
+                          cancellingBookingId ===
+                          booking.id
+                        }
+                        onClick={() =>
+                          handleCancel(booking)
+                        }
+                      >
+                        {cancellingBookingId ===
+                        booking.id
+                          ? "Cancelling..."
+                          : "Cancel Appointment"}
+                      </button>
 
-          </div>
-        )}
+                    </div>
+                  )}
 
-      </section>
+                  {booking.status === "COMPLETED" && (
+                    <div className="bookings-completed-note">
+                      <AiOutlineCheckCircle />
+                      Thank you for using Slotify.
+                    </div>
+                  )}
 
+                  {booking.status === "CANCELLED" && (
+                    <div className="bookings-cancelled-note">
+                      This booking is no longer active.
+                    </div>
+                  )}
+
+                </article>
+
+              ))}
+
+            </div>
+          )}
+
+        </section>
+
+      </div>
     </main>
   );
 }

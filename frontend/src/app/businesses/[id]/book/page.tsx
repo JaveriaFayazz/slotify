@@ -1,8 +1,10 @@
 "use client";
 
+import { AiOutlineRight } from "react-icons/ai";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import {
   getAllBusinesses,
@@ -38,7 +40,6 @@ export default function BookingPage() {
   const [booking, setBooking] = useState(false);
 
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   // Load business and selected service
   useEffect(() => {
@@ -105,7 +106,6 @@ export default function BookingPage() {
       try {
         setLoadingSlots(true);
         setError("");
-        setSuccess("");
         setSelectedTime("");
 
         const slots = await getAvailableSlots(
@@ -139,7 +139,6 @@ export default function BookingPage() {
     try {
       setBooking(true);
       setError("");
-      setSuccess("");
 
       await createBooking(
         serviceId,
@@ -147,10 +146,9 @@ export default function BookingPage() {
         selectedTime
       );
 
-      // Show success message
-      setSuccess(
-        "Your booking has been created successfully!"
-      );
+     toast.success("Booking created successfully!", {
+  description: "Your appointment has been added to My Bookings.",
+});
 
       // Refresh available slots after booking
       const updatedSlots = await getAvailableSlots(
@@ -380,7 +378,6 @@ export default function BookingPage() {
                         }`}
                         onClick={() => {
                           setSelectedTime(slot);
-                          setSuccess("");
                           setError("");
                         }}
                       >
@@ -402,17 +399,9 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* Success */}
-        {success && (
-          <div className="booking-message success">
-            {success}
-          </div>
-        )}
-
         {/* Booking button */}
         {bookingDate &&
-          availableSlots.length > 0 &&
-          !success && (
+        availableSlots.length > 0 && (
             <section className="booking-action">
 
               <button

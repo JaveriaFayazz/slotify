@@ -1,19 +1,29 @@
-# Environment variables
+﻿# Environment variables and secrets
 .env
+.env.*
 *.env
-
+*.env.*
+!.env.example
+!.env.*.example
 # Dependencies
 node_modules/
-
 # Build output
 .next/
 dist/
 build/
-
+out/
+.vercel/
+# Test output
+coverage/
 # Logs
 *.log
 npm-debug.log*
-
+yarn-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+# Local database backups
+*.dump
+*.backup
+# Private keys and certificates
+*.pem

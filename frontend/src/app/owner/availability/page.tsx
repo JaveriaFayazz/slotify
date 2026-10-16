@@ -4,6 +4,24 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
 import {
+  AiOutlineAppstore,
+  AiOutlineCalendar,
+  AiOutlineCheckCircle,
+  AiOutlineClockCircle,
+  AiOutlineDelete,
+  AiOutlineEdit,
+  AiOutlineEnvironment,
+  AiOutlineLogout,
+  AiOutlinePlus,
+  AiOutlineRight,
+  AiOutlineShop,
+  AiOutlineTool,
+  AiOutlineUser,
+} from "react-icons/ai";
+
+import { toast } from "sonner";
+
+import {
   Business,
   getMyBusinesses,
 } from "../../services/business.service";
@@ -22,7 +40,6 @@ import {
   updateAvailability,
 } from "../../services/availability.service";
 
-
 const DAYS = [
   { value: 0, label: "Sunday" },
   { value: 1, label: "Monday" },
@@ -33,22 +50,16 @@ const DAYS = [
   { value: 6, label: "Saturday" },
 ];
 
-
 export default function AvailabilityPage() {
   const [user, setUser] = useState<User | null>(null);
 
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [selectedBusinessId, setSelectedBusinessId] =
-    useState("");
+  const [selectedBusinessId, setSelectedBusinessId] = useState("");
 
-  const [availability, setAvailability] =
-    useState<Availability[]>([]);
+  const [availability, setAvailability] = useState<Availability[]>([]);
 
-  const [loadingBusinesses, setLoadingBusinesses] =
-    useState(true);
-
-  const [loadingAvailability, setLoadingAvailability] =
-    useState(false);
+  const [loadingBusinesses, setLoadingBusinesses] = useState(true);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
 
   const [showForm, setShowForm] = useState(false);
 
@@ -58,12 +69,10 @@ export default function AvailabilityPage() {
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   const [dayOfWeek, setDayOfWeek] = useState("1");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
-
 
   useEffect(() => {
     const storedUser = getStoredUser();
@@ -77,16 +86,13 @@ export default function AvailabilityPage() {
     setUser(storedUser);
 
     if (storedUser.role !== "OWNER") {
-      setError(
-        "This page is only available to business owners."
-      );
+      setError("This page is only available to business owners.");
       setLoadingBusinesses(false);
       return;
     }
 
     loadBusinesses();
   }, []);
-
 
   async function loadBusinesses() {
     try {
@@ -101,21 +107,19 @@ export default function AvailabilityPage() {
         setSelectedBusinessId(data[0].id);
       }
     } catch (err) {
-      console.error(
-        "Failed to load businesses:",
-        err
-      );
+      console.error("Failed to load businesses:", err);
 
-      setError(
+      const message =
         err instanceof Error
           ? err.message
-          : "Failed to load businesses."
-      );
+          : "Failed to load businesses.";
+
+      setError(message);
+      toast.error(message);
     } finally {
       setLoadingBusinesses(false);
     }
   }
-
 
   useEffect(() => {
     if (!selectedBusinessId) {
@@ -126,34 +130,28 @@ export default function AvailabilityPage() {
     loadAvailability(selectedBusinessId);
   }, [selectedBusinessId]);
 
-
-  async function loadAvailability(
-    businessId: string
-  ) {
+  async function loadAvailability(businessId: string) {
     try {
       setLoadingAvailability(true);
       setError("");
 
-      const data =
-        await getMyAvailability(businessId);
+      const data = await getMyAvailability(businessId);
 
       setAvailability(data);
     } catch (err) {
-      console.error(
-        "Failed to load availability:",
-        err
-      );
+      console.error("Failed to load availability:", err);
 
-      setError(
+      const message =
         err instanceof Error
           ? err.message
-          : "Failed to load availability."
-      );
+          : "Failed to load availability.";
+
+      setError(message);
+      toast.error(message);
     } finally {
       setLoadingAvailability(false);
     }
   }
-
 
   function resetForm() {
     setDayOfWeek("1");
@@ -162,12 +160,11 @@ export default function AvailabilityPage() {
 
     setEditingAvailabilityId(null);
     setShowForm(false);
+    setError("");
   }
-
 
   function openAddForm() {
     setError("");
-    setSuccess("");
 
     setDayOfWeek("1");
     setStartTime("09:00");
@@ -177,24 +174,12 @@ export default function AvailabilityPage() {
     setShowForm(true);
   }
 
-
-  function openEditForm(
-    item: Availability
-  ) {
+  function openEditForm(item: Availability) {
     setError("");
-    setSuccess("");
 
-    setDayOfWeek(
-      String(item.day_of_week)
-    );
-
-    setStartTime(
-      item.start_time.slice(0, 5)
-    );
-
-    setEndTime(
-      item.end_time.slice(0, 5)
-    );
+    setDayOfWeek(String(item.day_of_week));
+    setStartTime(item.start_time.slice(0, 5));
+    setEndTime(item.end_time.slice(0, 5));
 
     setEditingAvailabilityId(item.id);
     setShowForm(true);
@@ -205,31 +190,25 @@ export default function AvailabilityPage() {
     });
   }
 
-
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
     setError("");
-    setSuccess("");
 
     if (!selectedBusinessId) {
-      setError("Please select a business.");
+      toast.error("Please select a business.");
       return;
     }
 
     if (!startTime || !endTime) {
-      setError(
-        "Please select both start and end times."
-      );
+      toast.error("Please select both start and end times.");
       return;
     }
 
     if (startTime >= endTime) {
-      setError(
-        "End time must be later than start time."
-      );
+      toast.error("End time must be later than start time.");
       return;
     }
 
@@ -244,73 +223,66 @@ export default function AvailabilityPage() {
       };
 
       if (editingAvailabilityId) {
-        const updated =
-          await updateAvailability(
-            editingAvailabilityId,
-            data
-          );
-
-        setAvailability(
-          (current) =>
-            current.map((item) =>
-              item.id ===
-              editingAvailabilityId
-                ? updated
-                : item
-            )
+        const updated = await updateAvailability(
+          editingAvailabilityId,
+          data
         );
 
-        setSuccess(
+        setAvailability((current) =>
+          current.map((item) =>
+            item.id === editingAvailabilityId
+              ? updated
+              : item
+          )
+        );
+
+        toast.success(
           "Availability updated successfully."
         );
       } else {
-        const created =
-          await createAvailability(data);
+        const created = await createAvailability(data);
 
-        setAvailability(
-          (current) => [
-            ...current,
-            created,
-          ]
-        );
+        setAvailability((current) => [
+          ...current,
+          created,
+        ]);
 
-        setSuccess(
+        toast.success(
           "Availability added successfully."
         );
       }
 
-      resetForm();
-
+      setDayOfWeek("1");
+      setStartTime("09:00");
+      setEndTime("17:00");
+      setEditingAvailabilityId(null);
+      setShowForm(false);
     } catch (err) {
       console.error(
         "Save availability error:",
         err
       );
 
-      setError(
+      const message =
         err instanceof Error
           ? err.message
-          : "Failed to save availability."
-      );
+          : "Failed to save availability.";
+
+      toast.error(message);
     } finally {
       setSaving(false);
     }
   }
 
-
-  async function handleDelete(
-    item: Availability
-  ) {
+  async function handleDelete(item: Availability) {
     const dayName =
       DAYS.find(
-        (day) =>
-          day.value === item.day_of_week
+        (day) => day.value === item.day_of_week
       )?.label || "Unknown day";
 
-    const confirmed =
-      window.confirm(
-        `Are you sure you want to delete ${dayName}'s availability?`
-      );
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${dayName}'s availability?`
+    );
 
     if (!confirmed) {
       return;
@@ -318,109 +290,98 @@ export default function AvailabilityPage() {
 
     try {
       setError("");
-      setSuccess("");
 
       await deleteAvailability(
         item.id,
         selectedBusinessId
       );
 
-      setAvailability(
-        (current) =>
-          current.filter(
-            (availabilityItem) =>
-              availabilityItem.id !==
-              item.id
-          )
+      setAvailability((current) =>
+        current.filter(
+          (availabilityItem) =>
+            availabilityItem.id !== item.id
+        )
       );
 
-      setSuccess(
+      toast.success(
         "Availability deleted successfully."
       );
-
     } catch (err) {
       console.error(
         "Delete availability error:",
         err
       );
 
-      setError(
+      const message =
         err instanceof Error
           ? err.message
-          : "Failed to delete availability."
-      );
+          : "Failed to delete availability.";
+
+      toast.error(message);
     }
   }
-
 
   function handleLogout() {
     logout();
     window.location.href = "/login";
   }
 
+  const selectedBusiness = businesses.find(
+    (business) =>
+      business.id === selectedBusinessId
+  );
 
-  const selectedBusiness =
-    businesses.find(
-      (business) =>
-        business.id ===
-        selectedBusinessId
-    );
-
-
-  function getDayName(
-    dayOfWeek: number
-  ) {
+  function getDayName(dayOfWeek: number) {
     return (
       DAYS.find(
-        (day) =>
-          day.value === dayOfWeek
+        (day) => day.value === dayOfWeek
       )?.label || "Unknown"
     );
   }
 
+  function formatTime(time: string) {
+    const [hours, minutes] = time.split(":");
 
-  function formatTime(
-    time: string
-  ) {
-    const [hours, minutes] =
-      time.split(":");
+    const hour = Number(hours);
 
-    const hour =
-      Number(hours);
-
-    const suffix =
-      hour >= 12
-        ? "PM"
-        : "AM";
-
-    const displayHour =
-      hour % 12 || 12;
+    const suffix = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 || 12;
 
     return `${displayHour}:${minutes} ${suffix}`;
   }
-
 
   if (loadingBusinesses) {
     return (
       <main className="owner-availability-page">
         <div className="availability-loading">
-          Loading availability...
+          <div className="loading-spinner" />
+          <p>Loading availability...</p>
         </div>
       </main>
     );
   }
-
 
   if (!user) {
     return (
       <main className="owner-availability-page">
         <div className="availability-message error">
-          {error || "Please log in first."}
+          <AiOutlineUser />
+
+          <div>
+            <strong>Please log in</strong>
+
+            <p>
+              {error || "Please log in first."}
+            </p>
+          </div>
+
+          <Link href="/login">
+            Go to Login
+          </Link>
         </div>
       </main>
     );
   }
-
 
   if (user.role !== "OWNER") {
     return (
@@ -432,19 +393,26 @@ export default function AvailabilityPage() {
             href="/"
             className="availability-logo"
           >
+            <span className="availability-logo-mark">
+              S
+            </span>
+
             Slotify
           </Link>
 
           <div className="availability-nav-links">
 
             <Link href="/dashboard">
+              <AiOutlineAppstore />
               Dashboard
             </Link>
 
             <button
+              type="button"
               onClick={handleLogout}
               className="availability-logout"
             >
+              <AiOutlineLogout />
               Logout
             </button>
 
@@ -453,549 +421,523 @@ export default function AvailabilityPage() {
         </nav>
 
         <div className="availability-message error">
-          This page is only available to
-          business owners.
+          <AiOutlineUser />
+
+          <div>
+            <strong>Access denied</strong>
+
+            <p>
+              This page is only available to
+              business owners.
+            </p>
+          </div>
         </div>
 
       </main>
     );
   }
 
-
   return (
     <main className="owner-availability-page">
 
-      {/* NAVBAR */}
+      {/* SIDEBAR */}
 
-      <nav className="availability-navbar">
+      <aside className="availability-sidebar">
 
         <Link
-          href="/"
-          className="availability-logo"
+          href="/dashboard"
+          className="availability-sidebar-logo"
         >
-          Slotify
+          <span className="availability-logo-mark">
+            S
+          </span>
+
+          <span>Slotify</span>
         </Link>
 
-        <div className="availability-nav-links">
+        <div className="availability-sidebar-section">
 
-          <Link href="/dashboard">
-            Dashboard
-          </Link>
+          <span className="availability-sidebar-label">
+            MANAGEMENT
+          </span>
 
-          <Link href="/owner/businesses">
-            My Businesses
-          </Link>
+          <nav className="availability-sidebar-nav">
 
-          <Link href="/owner/services">
-            Services
-          </Link>
+            <Link
+              href="/owner/businesses"
+              className="availability-sidebar-link"
+            >
+              <AiOutlineShop />
+              <span>My Businesses</span>
+            </Link>
 
-          <Link
-            href="/owner/availability"
-            className="active"
-          >
-            Availability
-          </Link>
+            <Link
+              href="/owner/services"
+              className="availability-sidebar-link"
+            >
+              <AiOutlineTool />
+              <span>Manage Services</span>
+            </Link>
+
+            <Link
+              href="/owner/availability"
+              className="availability-sidebar-link active"
+            >
+              <AiOutlineClockCircle />
+              <span>Availability</span>
+            </Link>
+
+            <Link
+              href="/owner/appointments"
+              className="availability-sidebar-link"
+            >
+              <AiOutlineCalendar />
+              <span>Appointments</span>
+            </Link>
+
+          </nav>
+
+        </div>
+
+        <div className="availability-sidebar-section availability-sidebar-lower">
+
+          <span className="availability-sidebar-label">
+            QUICK ACCESS
+          </span>
+
+          <nav className="availability-sidebar-nav">
+
+            <Link
+              href="/dashboard"
+              className="availability-sidebar-link"
+            >
+              <AiOutlineAppstore />
+              <span>Customer Dashboard</span>
+            </Link>
+
+          </nav>
+
+        </div>
+
+        <div className="availability-sidebar-bottom">
+
+          <div className="availability-sidebar-user">
+
+            <div className="availability-user-avatar">
+              <AiOutlineUser />
+            </div>
+
+            <div className="availability-user-info">
+
+              <strong>
+                {user.name}
+              </strong>
+
+              <span>
+                Business Owner
+              </span>
+
+            </div>
+
+          </div>
 
           <button
+            type="button"
             onClick={handleLogout}
-            className="availability-logout"
+            className="availability-logout-icon"
+            aria-label="Logout"
+            title="Logout"
           >
-            Logout
+            <AiOutlineLogout />
           </button>
 
         </div>
 
-      </nav>
+      </aside>
 
+      {/* MAIN */}
 
-      {/* MAIN CONTENT */}
+      <section className="availability-main">
 
-      <section className="availability-content">
+        <div className="availability-topbar">
 
-        <div className="availability-hero">
+          <div className="availability-breadcrumb">
 
-          <div>
+            <span>Owner</span>
 
-            <span className="availability-eyebrow">
-              BUSINESS OWNER
-            </span>
+            <AiOutlineRight />
 
-            <h1>
+            <strong>
               Availability
-            </h1>
-
-            <p>
-              Set the days and hours when
-              customers can book appointments.
-            </p>
+            </strong>
 
           </div>
 
-          <div className="availability-hero-icon">
-            🕐
-          </div>
+          <Link
+            href="/owner/businesses"
+            className="availability-topbar-link"
+          >
+            My Businesses
+            <AiOutlineRight />
+          </Link>
 
         </div>
 
+        <div className="availability-content">
 
-        {/* BUSINESS SELECTOR */}
+          {/* PAGE HEADER */}
 
-        <div className="availability-selector-card">
+          <header className="availability-page-header">
 
-          <div>
+            <div>
 
-            <span className="selector-label">
-              SELECT BUSINESS
-            </span>
+              <span className="availability-eyebrow">
+                BUSINESS MANAGEMENT
+              </span>
 
-            <h2>
-              Which business are you managing?
-            </h2>
+              <h1>
+                Availability
+              </h1>
 
-            <p>
-              Choose a business to manage
-              its working hours.
-            </p>
+              <p>
+                Set the days and hours when customers
+                can book appointments with your business.
+              </p>
 
-          </div>
-
-
-          {businesses.length > 0 ? (
-
-            <select
-              value={selectedBusinessId}
-              onChange={(event) => {
-                setSelectedBusinessId(
-                  event.target.value
-                );
-
-                setShowForm(false);
-                setEditingAvailabilityId(
-                  null
-                );
-
-                setSuccess("");
-                setError("");
-              }}
-              className="availability-selector"
-            >
-
-              {businesses.map(
-                (business) => (
-
-                  <option
-                    key={business.id}
-                    value={business.id}
-                  >
-                    {business.name}
-                  </option>
-
-                )
-              )}
-
-            </select>
-
-          ) : (
-
-            <div className="no-business-selected">
-              You don't have any businesses yet.
             </div>
 
-          )}
-
-        </div>
-
-
-        {/* NO BUSINESS */}
-
-        {businesses.length === 0 ? (
-
-          <div className="empty-availability-card">
-
-            <div className="empty-icon">
-              🏢
+            <div className="availability-header-icon">
+              <AiOutlineClockCircle />
             </div>
 
-            <h2>
-              Create a business first
-            </h2>
+          </header>
 
-            <p>
-              You need to create a business
-              before setting availability.
-            </p>
+          {/* BUSINESS SELECTOR */}
 
-            <Link
-              href="/owner/businesses"
-              className="primary-availability-button"
-            >
-              Go to My Businesses →
-            </Link>
+          <section className="availability-selector-card">
 
-          </div>
+            <div className="availability-selector-info">
 
-        ) : (
-
-          <>
-
-            {/* CURRENT BUSINESS */}
-
-            {selectedBusiness && (
-
-              <div className="selected-availability-banner">
-
-                <div className="selected-availability-icon">
-                  🏢
-                </div>
-
-                <div>
-
-                  <span>
-                    MANAGING AVAILABILITY FOR
-                  </span>
-
-                  <h2>
-                    {selectedBusiness.name}
-                  </h2>
-
-                  <p>
-                    {selectedBusiness.category}
-                    {" • "}
-                    {selectedBusiness.location}
-                  </p>
-
-                </div>
-
+              <div className="availability-selector-icon">
+                <AiOutlineShop />
               </div>
-
-            )}
-
-
-            {/* HEADER */}
-
-            <div className="availability-section-header">
 
               <div>
 
-                <span className="availability-section-eyebrow">
-                  WORKING HOURS
+                <span className="availability-selector-label">
+                  SELECT BUSINESS
                 </span>
 
                 <h2>
-                  Your Availability
-                </h2>
-
-              </div>
-
-              <button
-                onClick={openAddForm}
-                className="add-availability-button"
-              >
-                + Add Availability
-              </button>
-
-            </div>
-
-
-            {/* FORM */}
-
-            {showForm && (
-
-              <div className="availability-form-card">
-
-                <div className="availability-form-heading">
-
-                  <div className="availability-form-icon">
-                    {editingAvailabilityId
-                      ? "✏️"
-                      : "➕"}
-                  </div>
-
-                  <div>
-
-                    <h2>
-                      {editingAvailabilityId
-                        ? "Edit Availability"
-                        : "Add Availability"}
-                    </h2>
-
-                    <p>
-                      Set the working hours
-                      for a day of the week.
-                    </p>
-
-                  </div>
-
-                </div>
-
-
-                <form onSubmit={handleSubmit}>
-
-                  <div className="availability-form-group">
-
-                    <label htmlFor="availability-day">
-                      Day of Week
-                    </label>
-
-                    <select
-                      id="availability-day"
-                      value={dayOfWeek}
-                      onChange={(event) =>
-                        setDayOfWeek(
-                          event.target.value
-                        )
-                      }
-                    >
-
-                      {DAYS.map(
-                        (day) => (
-
-                          <option
-                            key={day.value}
-                            value={day.value}
-                          >
-                            {day.label}
-                          </option>
-
-                        )
-                      )}
-
-                    </select>
-
-                  </div>
-
-
-                  <div className="availability-time-row">
-
-                    <div className="availability-form-group">
-
-                      <label htmlFor="start-time">
-                        Start Time
-                      </label>
-
-                      <input
-                        id="start-time"
-                        type="time"
-                        value={startTime}
-                        onChange={(event) =>
-                          setStartTime(
-                            event.target.value
-                          )
-                        }
-                      />
-
-                    </div>
-
-
-                    <div className="availability-form-group">
-
-                      <label htmlFor="end-time">
-                        End Time
-                      </label>
-
-                      <input
-                        id="end-time"
-                        type="time"
-                        value={endTime}
-                        onChange={(event) =>
-                          setEndTime(
-                            event.target.value
-                          )
-                        }
-                      />
-
-                    </div>
-
-                  </div>
-
-
-                  {error && (
-
-                    <div className="availability-form-message error">
-                      {error}
-                    </div>
-
-                  )}
-
-
-                  {success && (
-
-                    <div className="availability-form-message success">
-                      {success}
-                    </div>
-
-                  )}
-
-
-                  <div className="availability-form-actions">
-
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      className="cancel-availability-button"
-                    >
-                      Cancel
-                    </button>
-
-                    <button
-                      type="submit"
-                      className="save-availability-button"
-                      disabled={saving}
-                    >
-                      {saving
-                        ? "Saving..."
-                        : editingAvailabilityId
-                        ? "Update Availability →"
-                        : "Add Availability →"}
-                    </button>
-
-                  </div>
-
-                </form>
-
-              </div>
-
-            )}
-
-
-            {/* GLOBAL MESSAGES */}
-
-            {!showForm && error && (
-
-              <div className="availability-message error">
-                {error}
-              </div>
-
-            )}
-
-            {!showForm && success && (
-
-              <div className="availability-message success">
-                {success}
-              </div>
-
-            )}
-
-
-            {/* AVAILABILITY LIST */}
-
-            {loadingAvailability ? (
-
-              <div className="availability-loading-card">
-                Loading your availability...
-              </div>
-
-            ) : availability.length === 0 ? (
-
-              <div className="empty-availability-card">
-
-                <div className="empty-icon">
-                  🕐
-                </div>
-
-                <h2>
-                  No availability yet
+                  Which business are you managing?
                 </h2>
 
                 <p>
-                  Add your working hours so
-                  customers know when they can
-                  book appointments.
+                  Choose a business to manage its
+                  working hours.
                 </p>
 
-                <button
-                  onClick={openAddForm}
-                  className="primary-availability-button"
+              </div>
+
+            </div>
+
+            {businesses.length > 0 ? (
+
+              <div className="availability-select-wrapper">
+
+                <select
+                  value={selectedBusinessId}
+                  onChange={(event) => {
+
+                    setSelectedBusinessId(
+                      event.target.value
+                    );
+
+                    setShowForm(false);
+                    setEditingAvailabilityId(null);
+                    setError("");
+
+                  }}
+                  className="availability-selector"
                 >
-                  + Add Your First Availability
-                </button>
+
+                  {businesses.map((business) => (
+
+                    <option
+                      key={business.id}
+                      value={business.id}
+                    >
+                      {business.name}
+                    </option>
+
+                  ))}
+
+                </select>
 
               </div>
 
             ) : (
 
-              <div className="availability-grid">
+              <div className="no-business-selected">
+                You don't have any businesses yet.
+              </div>
 
-                {availability.map(
-                  (item) => (
+            )}
 
-                    <div
-                      key={item.id}
-                      className="availability-card"
-                    >
+          </section>
 
-                      <div className="availability-card-top">
+          {/* NO BUSINESS */}
 
-                        <div className="availability-day-icon">
-                          📅
-                        </div>
+          {businesses.length === 0 ? (
 
-                        <div className="availability-card-actions">
+            <div className="empty-availability-card">
 
-                          <button
-                            onClick={() =>
-                              openEditForm(item)
+              <div className="empty-availability-icon">
+                <AiOutlineShop />
+              </div>
+
+              <span className="empty-card-label">
+                GET STARTED
+              </span>
+
+              <h2>
+                Create a business first
+              </h2>
+
+              <p>
+                You need to create a business before
+                setting availability.
+              </p>
+
+              <Link
+                href="/owner/businesses"
+                className="primary-availability-button"
+              >
+                Go to My Businesses
+                <AiOutlineRight />
+              </Link>
+
+            </div>
+
+          ) : (
+
+            <>
+
+              {/* CURRENT BUSINESS */}
+
+              {selectedBusiness && (
+
+                <div className="selected-availability-banner">
+
+                  <div className="selected-availability-icon">
+                    <AiOutlineShop />
+                  </div>
+
+                  <div className="selected-availability-info">
+
+                    <span>
+                      MANAGING AVAILABILITY FOR
+                    </span>
+
+                    <h2>
+                      {selectedBusiness.name}
+                    </h2>
+
+                    <p>
+
+                      <span>
+                        {selectedBusiness.category}
+                      </span>
+
+                      <span className="banner-dot">
+                        •
+                      </span>
+
+                      <span className="banner-location">
+
+                        <AiOutlineEnvironment />
+
+                        {selectedBusiness.location}
+
+                      </span>
+
+                    </p>
+
+                  </div>
+
+                  <div className="selected-business-check">
+
+                    <AiOutlineCheckCircle />
+
+                    <span>
+                      Active
+                    </span>
+
+                  </div>
+
+                </div>
+
+              )}
+
+              {/* SECTION HEADER */}
+
+              <div className="availability-section-header">
+
+                <div>
+
+                  <span className="availability-section-eyebrow">
+                    WORKING HOURS
+                  </span>
+
+                  <h2>
+                    Your Availability
+                  </h2>
+
+                  <p>
+                    Define when customers can book
+                    your services.
+                  </p>
+
+                </div>
+
+                <button
+                  type="button"
+                  onClick={openAddForm}
+                  className="add-availability-button"
+                >
+                  <AiOutlinePlus />
+                  Add Availability
+                </button>
+
+              </div>
+
+              {/* FORM */}
+
+              {showForm && (
+
+                <div className="availability-form-card">
+
+                  <div className="availability-form-heading">
+
+                    <div className="availability-form-icon">
+
+                      {editingAvailabilityId ? (
+                        <AiOutlineEdit />
+                      ) : (
+                        <AiOutlinePlus />
+                      )}
+
+                    </div>
+
+                    <div>
+
+                      <span>
+                        {editingAvailabilityId
+                          ? "UPDATE HOURS"
+                          : "NEW SCHEDULE"}
+                      </span>
+
+                      <h2>
+                        {editingAvailabilityId
+                          ? "Edit Availability"
+                          : "Add Availability"}
+                      </h2>
+
+                      <p>
+                        Set the working hours for
+                        a day of the week.
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                  <form onSubmit={handleSubmit}>
+
+                    <div className="availability-form-grid">
+
+                      <div className="availability-form-group">
+
+                        <label htmlFor="availability-day">
+                          Day of Week
+                        </label>
+
+                        <div className="availability-input-with-icon">
+
+                          <AiOutlineCalendar />
+
+                          <select
+                            id="availability-day"
+                            value={dayOfWeek}
+                            onChange={(event) =>
+                              setDayOfWeek(
+                                event.target.value
+                              )
                             }
-                            className="edit-availability-button"
                           >
-                            Edit
-                          </button>
 
-                          <button
-                            onClick={() =>
-                              handleDelete(item)
-                            }
-                            className="delete-availability-button"
-                          >
-                            Delete
-                          </button>
+                            {DAYS.map((day) => (
+
+                              <option
+                                key={day.value}
+                                value={day.value}
+                              >
+                                {day.label}
+                              </option>
+
+                            ))}
+
+                          </select>
 
                         </div>
 
                       </div>
 
+                      <div className="availability-form-group">
 
-                      <h3>
-                        {getDayName(
-                          item.day_of_week
-                        )}
-                      </h3>
+                        <label htmlFor="start-time">
+                          Start Time
+                        </label>
 
+                        <div className="availability-input-with-icon">
 
-                      <div className="availability-time-display">
+                          <AiOutlineClockCircle />
 
-                        <div>
-
-                          <small>
-                            START
-                          </small>
-
-                          <strong>
-                            {formatTime(
-                              item.start_time
-                            )}
-                          </strong>
+                          <input
+                            id="start-time"
+                            type="time"
+                            value={startTime}
+                            onChange={(event) =>
+                              setStartTime(
+                                event.target.value
+                              )
+                            }
+                          />
 
                         </div>
 
+                      </div>
 
-                        <span>
-                          →
-                        </span>
+                      <div className="availability-form-group">
 
+                        <label htmlFor="end-time">
+                          End Time
+                        </label>
 
-                        <div>
+                        <div className="availability-input-with-icon">
 
-                          <small>
-                            END
-                          </small>
+                          <AiOutlineClockCircle />
 
-                          <strong>
-                            {formatTime(
-                              item.end_time
-                            )}
-                          </strong>
+                          <input
+                            id="end-time"
+                            type="time"
+                            value={endTime}
+                            onChange={(event) =>
+                              setEndTime(
+                                event.target.value
+                              )
+                            }
+                          />
 
                         </div>
 
@@ -1003,16 +945,264 @@ export default function AvailabilityPage() {
 
                     </div>
 
-                  )
+                    {error && (
+
+                      <div className="availability-form-message error">
+                        {error}
+                      </div>
+
+                    )}
+
+                    <div className="availability-form-actions">
+
+                      <button
+                        type="button"
+                        onClick={resetForm}
+                        className="cancel-availability-button"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="submit"
+                        className="save-availability-button"
+                        disabled={saving}
+                      >
+
+                        {saving ? (
+                          "Saving..."
+                        ) : (
+                          <>
+                            {editingAvailabilityId
+                              ? "Update Availability"
+                              : "Add Availability"}
+
+                            <AiOutlineRight />
+                          </>
+                        )}
+
+                      </button>
+
+                    </div>
+
+                  </form>
+
+                </div>
+
+              )}
+
+              {/* GLOBAL ERROR */}
+
+              {!showForm && error && (
+
+                <div className="availability-message error">
+                  {error}
+                </div>
+
+              )}
+
+              {/* AVAILABILITY LIST */}
+
+              <section className="availability-list-section">
+
+                <div className="availability-list-heading">
+
+                  <div>
+
+                    <span>
+                      ACTIVE SCHEDULE
+                    </span>
+
+                    <h3>
+
+                      {availability.length}{" "}
+
+                      {availability.length === 1
+                        ? "time slot"
+                        : "time slots"}
+
+                    </h3>
+
+                  </div>
+
+                </div>
+
+                {loadingAvailability ? (
+
+                  <div className="availability-loading-card">
+
+                    <div className="loading-spinner" />
+
+                    <span>
+                      Loading your availability...
+                    </span>
+
+                  </div>
+
+                ) : availability.length === 0 ? (
+
+                  <div className="empty-availability-card compact">
+
+                    <div className="empty-availability-icon">
+                      <AiOutlineClockCircle />
+                    </div>
+
+                    <span className="empty-card-label">
+                      NO HOURS SET
+                    </span>
+
+                    <h2>
+                      No availability yet
+                    </h2>
+
+                    <p>
+                      Add your working hours so
+                      customers know when they can
+                      book appointments.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={openAddForm}
+                      className="primary-availability-button"
+                    >
+                      <AiOutlinePlus />
+                      Add Your First Availability
+                    </button>
+
+                  </div>
+
+                ) : (
+
+                  <div className="availability-grid">
+
+                    {availability.map((item) => (
+
+                      <div
+                        key={item.id}
+                        className="availability-card"
+                      >
+
+                        <div className="availability-card-top">
+
+                          <div className="availability-day-icon">
+                            <AiOutlineCalendar />
+                          </div>
+
+                          <div className="availability-card-actions">
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openEditForm(item)
+                              }
+                              className="edit-availability-button"
+                              title="Edit availability"
+                            >
+                              <AiOutlineEdit />
+                              <span>
+                                Edit
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDelete(item)
+                              }
+                              className="delete-availability-button"
+                              title="Delete availability"
+                            >
+                              <AiOutlineDelete />
+                            </button>
+
+                          </div>
+
+                        </div>
+
+                        <div className="availability-card-content">
+
+                          <span className="availability-day-label">
+                            WORKING DAY
+                          </span>
+
+                          <h3>
+                            {getDayName(
+                              item.day_of_week
+                            )}
+                          </h3>
+
+                          <div className="availability-time-display">
+
+                            <div className="availability-time-block">
+
+                              <small>
+                                START
+                              </small>
+
+                              <strong>
+                                {formatTime(
+                                  item.start_time
+                                )}
+                              </strong>
+
+                            </div>
+
+                            <div className="availability-time-line">
+
+                              <span />
+
+                              <AiOutlineRight />
+
+                              <span />
+
+                            </div>
+
+                            <div className="availability-time-block">
+
+                              <small>
+                                END
+                              </small>
+
+                              <strong>
+                                {formatTime(
+                                  item.end_time
+                                )}
+                              </strong>
+
+                            </div>
+
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                    ))}
+
+                  </div>
+
                 )}
 
-              </div>
+              </section>
 
-            )}
+            </>
 
-          </>
+          )}
 
-        )}
+        </div>
+
+        <footer className="availability-page-footer">
+
+          <span>
+            Slotify
+          </span>
+
+          <span>
+            Business availability management
+          </span>
+
+        </footer>
 
       </section>
 

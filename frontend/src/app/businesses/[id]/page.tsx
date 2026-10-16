@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { AiOutlineRight } from "react-icons/ai";
 
 import {
   getAllBusinesses,
@@ -138,7 +139,7 @@ export default function BusinessDetailsPage() {
             href="/dashboard"
             className="business-button"
           >
-            ← Back to Dashboard
+            â† Back to Dashboard
           </Link>
         </div>
       </main>
@@ -174,7 +175,7 @@ export default function BusinessDetailsPage() {
             href="/dashboard"
             className="back-link"
           >
-            ← Back to Businesses
+            â† Back to Businesses
           </Link>
 
           <span className="business-category">
@@ -186,7 +187,7 @@ export default function BusinessDetailsPage() {
           <p>{business.description}</p>
 
           <div className="business-detail-location">
-            📍 {business.location}
+            ðŸ“ {business.location}
           </div>
         </div>
       </section>
@@ -225,7 +226,7 @@ export default function BusinessDetailsPage() {
 
                   <div className="customer-service-details">
                     <span>
-                      ⏱ {service.duration} minutes
+                      â± {service.duration} minutes
                     </span>
 
                     <span>
@@ -238,7 +239,8 @@ export default function BusinessDetailsPage() {
                   href={`/businesses/${businessId}/book?serviceId=${service.id}`}
                   className="business-button"
                 >
-                  Book Now →
+                  Book Now
+  <AiOutlineRight />
                 </Link>
               </div>
             ))}
@@ -248,3 +250,5 @@ export default function BusinessDetailsPage() {
     </main>
   );
 }
+
+

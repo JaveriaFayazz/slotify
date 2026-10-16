@@ -3,20 +3,34 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+
 import {
-  register,
-  getStoredUser,
-} from "../services/auth.service";
+  AiOutlineArrowRight,
+  AiOutlineCalendar,
+  AiOutlineCheckCircle,
+  AiOutlineClockCircle,
+  AiOutlineMail,
+  AiOutlineLock,
+  AiOutlineUser,
+  AiOutlineShop,
+  AiOutlinePhone,
+} from "react-icons/ai";
+
+import { register } from "../services/auth.service";
 
 export default function RegisterPage() {
   const router = useRouter();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"CUSTOMER" | "OWNER">(
-    "CUSTOMER"
-  );
+  const [confirmPassword, setConfirmPassword] =
+    useState("");
+
+  const [role, setRole] = useState<
+    "CUSTOMER" | "OWNER"
+  >("CUSTOMER");
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,24 +39,59 @@ export default function RegisterPage() {
     event.preventDefault();
 
     setError("");
+
+    // Check password confirmation
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    // Basic password validation
+    if (password.length < 6) {
+      setError(
+        "Password must be at least 6 characters."
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await register(name, email, password, role);
+      const result = await register(
+        name,
+        email,
+        password,
+        role,
+        phone
+      );
 
-      const user = getStoredUser();
+      /*
+       * Registration is successful, but the user
+       * is not logged in yet.
+       *
+       * They must verify their email first.
+       */
 
-      if (!user) {
-        throw new Error(
-          "Account created, but user information could not be loaded."
+      if (result.verificationRequired) {
+        // Store temporary verification information.
+        sessionStorage.setItem(
+          "verificationUserId",
+          result.user.id
         );
+
+        sessionStorage.setItem(
+          "verificationEmail",
+          result.user.email
+        );
+
+        router.push("/verify-email");
+
+        return;
       }
 
-      if (user.role === "OWNER") {
-        router.push("/owner/businesses");
-      } else {
-        router.push("/dashboard");
-      }
+      throw new Error(
+        "Email verification is required."
+      );
     } catch (err) {
       setError(
         err instanceof Error
@@ -57,149 +106,373 @@ export default function RegisterPage() {
   return (
     <main className="auth-page">
       <nav className="auth-navbar">
-        <Link href="/" className="auth-logo">
+        <Link
+          href="/"
+          className="auth-logo"
+        >
           Slotify
         </Link>
 
-        <Link
-          href="/login"
-          className="auth-nav-link"
-        >
-          Sign in
-        </Link>
+        <div className="auth-nav-right">
+          <span>
+            Already have an account?
+          </span>
+
+          <Link
+            href="/login"
+            className="auth-nav-link"
+          >
+            Sign in
+          </Link>
+        </div>
       </nav>
 
-      <section className="auth-container register-container">
-        <div className="auth-card">
-          <div className="auth-heading">
-            <div className="auth-icon">✦</div>
+      <section className="auth-layout">
 
-            <p className="eyebrow">GET STARTED</p>
+        {/* LEFT BRANDING PANEL */}
 
-            <h1>Create your account</h1>
+        <div className="auth-brand-panel">
+          <div className="auth-brand-content">
 
-            <p>
-              Join Slotify and make appointment scheduling
-              simpler.
+            <div className="auth-brand-icon">
+              <AiOutlineCalendar />
+            </div>
+
+            <p className="auth-brand-eyebrow">
+              WELCOME TO SLOTIFY
             </p>
+
+            <h1>
+              Make every
+              <br />
+              appointment count.
+            </h1>
+
+            <p className="auth-brand-description">
+              Whether you're booking a service
+              or managing a business, Slotify
+              keeps everything simple and
+              organized.
+            </p>
+
+            <div className="auth-feature-list">
+
+              <div className="auth-feature">
+                <span>
+                  <AiOutlineCheckCircle />
+                </span>
+
+                <div>
+                  <strong>
+                    Simple scheduling
+                  </strong>
+
+                  <p>
+                    Find available times and book
+                    without the back-and-forth.
+                  </p>
+                </div>
+              </div>
+
+              <div className="auth-feature">
+                <span>
+                  <AiOutlineClockCircle />
+                </span>
+
+                <div>
+                  <strong>
+                    Built for businesses
+                  </strong>
+
+                  <p>
+                    Manage services, availability,
+                    and customer bookings.
+                  </p>
+                </div>
+              </div>
+
+            </div>
           </div>
 
-          <form
-            onSubmit={handleSubmit}
-            className="auth-form"
-          >
-            <div className="auth-field">
-              <label htmlFor="name">
-                Full name
-              </label>
+          <div className="auth-brand-footer">
+            <span>Slotify</span>
 
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(event) =>
-                  setName(event.target.value)
-                }
-                placeholder="Enter your name"
-                required
-              />
-            </div>
-
-            <div className="auth-field">
-              <label htmlFor="email">
-                Email
-              </label>
-
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(event) =>
-                  setEmail(event.target.value)
-                }
-                placeholder="you@example.com"
-                required
-              />
-            </div>
-
-            <div className="auth-field">
-              <label htmlFor="password">
-                Password
-              </label>
-
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(event) =>
-                  setPassword(event.target.value)
-                }
-                placeholder="Create a password"
-                required
-                minLength={6}
-              />
-
-              <span className="field-hint">
-                Use at least 6 characters.
-              </span>
-            </div>
-
-            <div className="auth-field">
-              <label htmlFor="role">
-                Account type
-              </label>
-
-              <select
-                id="role"
-                value={role}
-                onChange={(event) =>
-                  setRole(
-                    event.target.value as
-                      | "CUSTOMER"
-                      | "OWNER"
-                  )
-                }
-              >
-                <option value="CUSTOMER">
-                  Customer
-                </option>
-
-                <option value="OWNER">
-                  Business Owner
-                </option>
-              </select>
-            </div>
-
-            {error && (
-              <div className="auth-error">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="auth-submit"
-            >
-              {loading
-                ? "Creating account..."
-                : "Create account"}
-
-              {!loading && <span>→</span>}
-            </button>
-          </form>
-
-          <p className="auth-switch">
-            Already have an account?{" "}
-            <Link href="/login">
-              Sign in
-            </Link>
-          </p>
+            <span>
+              Simple booking. Better scheduling.
+            </span>
+          </div>
         </div>
 
-        <p className="auth-footer-text">
-          Simple booking. Better scheduling.
-        </p>
+        {/* REGISTER FORM */}
+
+        <div className="auth-form-panel">
+
+          <div className="auth-form-wrapper register-form-wrapper">
+
+            <div className="auth-heading">
+
+              <div className="auth-mobile-icon">
+                <AiOutlineCalendar />
+              </div>
+
+              <p className="eyebrow">
+                GET STARTED
+              </p>
+
+              <h2>
+                Create your account
+              </h2>
+
+              <p>
+                Set up your Slotify account and
+                get started in minutes.
+              </p>
+
+            </div>
+
+            <form
+              onSubmit={handleSubmit}
+              className="auth-form"
+            >
+
+              {/* NAME */}
+
+              <div className="auth-field">
+
+                <label htmlFor="name">
+                  Full name
+                </label>
+
+                <div className="auth-input-wrapper">
+
+                  <AiOutlineUser />
+
+                  <input
+                    id="name"
+                    type="text"
+                    value={name}
+                    onChange={(event) =>
+                      setName(
+                        event.target.value
+                      )
+                    }
+                    placeholder="Enter your name"
+                    required
+                  />
+
+                </div>
+              </div>
+
+              {/* EMAIL */}
+
+              <div className="auth-field">
+
+                <label htmlFor="email">
+                  Email address
+                </label>
+
+                <div className="auth-input-wrapper">
+
+                  <AiOutlineMail />
+
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(event) =>
+                      setEmail(
+                        event.target.value
+                      )
+                    }
+                    placeholder="you@example.com"
+                    required
+                  />
+
+                </div>
+              </div>
+
+              {/* PHONE */}
+
+              <div className="auth-field">
+
+                <label htmlFor="phone">
+                  Phone number
+                </label>
+
+                <div className="auth-input-wrapper">
+
+                  <AiOutlinePhone />
+
+                  <input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(event) =>
+                      setPhone(
+                        event.target.value
+                      )
+                    }
+                    placeholder="+92 300 1234567"
+                    required
+                  />
+
+                </div>
+
+                <span className="field-hint">
+                  Used for your account profile.
+                </span>
+
+              </div>
+
+              {/* PASSWORD */}
+
+              <div className="auth-field">
+
+                <label htmlFor="password">
+                  Password
+                </label>
+
+                <div className="auth-input-wrapper">
+
+                  <AiOutlineLock />
+
+                  <input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(event) =>
+                      setPassword(
+                        event.target.value
+                      )
+                    }
+                    placeholder="Create a password"
+                    required
+                    minLength={6}
+                  />
+
+                </div>
+
+                <span className="field-hint">
+                  Use at least 6 characters.
+                </span>
+
+              </div>
+
+              {/* CONFIRM PASSWORD */}
+
+              <div className="auth-field">
+
+                <label htmlFor="confirmPassword">
+                  Confirm password
+                </label>
+
+                <div className="auth-input-wrapper">
+
+                  <AiOutlineLock />
+
+                  <input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) =>
+                      setConfirmPassword(
+                        event.target.value
+                      )
+                    }
+                    placeholder="Re-enter your password"
+                    required
+                    minLength={6}
+                  />
+
+                </div>
+
+              </div>
+
+              {/* ROLE */}
+
+              <div className="auth-field">
+
+                <label htmlFor="role">
+                  Account type
+                </label>
+
+                <div className="auth-select-wrapper">
+
+                  {role === "CUSTOMER" ? (
+                    <AiOutlineUser />
+                  ) : (
+                    <AiOutlineShop />
+                  )}
+
+                  <select
+                    id="role"
+                    value={role}
+                    onChange={(event) =>
+                      setRole(
+                        event.target.value as
+                          | "CUSTOMER"
+                          | "OWNER"
+                      )
+                    }
+                  >
+
+                    <option value="CUSTOMER">
+                      Customer
+                    </option>
+
+                    <option value="OWNER">
+                      Business Owner
+                    </option>
+
+                  </select>
+
+                </div>
+
+              </div>
+
+              {/* ERROR */}
+
+              {error && (
+                <div className="auth-error">
+                  {error}
+                </div>
+              )}
+
+              {/* SUBMIT */}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="auth-submit"
+              >
+
+                <span>
+                  {loading
+                    ? "Creating account..."
+                    : "Create account"}
+                </span>
+
+                {!loading && (
+                  <AiOutlineArrowRight />
+                )}
+
+              </button>
+
+            </form>
+
+            <p className="auth-switch">
+
+              Already have an account?{" "}
+
+              <Link href="/login">
+                Sign in
+              </Link>
+
+            </p>
+
+          </div>
+        </div>
+
       </section>
     </main>
   );

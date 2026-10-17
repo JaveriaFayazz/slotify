@@ -1,3 +1,4 @@
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -11,22 +12,38 @@ dotenv.config();
 
 const app = express();
 
+const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    "https://slotify-phi-orcin.vercel.app",
+    "http://localhost:3000",
+].filter((origin): origin is string => Boolean(origin))
+ .map((origin) => origin.replace(/\/$/, ""));
+
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL || "http://localhost:3000",
+        origin: (origin, callback) => {
+            // Allow requests without an Origin header, such as server-to-server requests.
+            if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+                callback(null, true);
+            } else {
+                console.error("CORS blocked origin:", origin);
+                callback(new Error("Origin not allowed by CORS"));
+            }
+        },
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
     })
 );
 
 app.use(express.json());
 
-// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/businesses", businessRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/availability", availabilityRoutes);
 app.use("/api/bookings", bookingRoutes);
 
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
     res.json({
         message: "Slotify backend is running!",
     });
@@ -35,5 +52,5 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-    console.log(`🚀 Slotify server running on port ${PORT}`);
+    console.log(`Slotify server running on port ${PORT}`);
 });

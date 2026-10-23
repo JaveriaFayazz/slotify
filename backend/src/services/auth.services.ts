@@ -3,20 +3,11 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 import {
-    createVerificationOtp,
     verifyEmailOtp,
-    createPasswordResetOtp,
     verifyPasswordResetOtp,
     consumePasswordResetOtp,
-    createLogin2FAOtp,
     verifyLogin2FAOtp
 } from "./otp.services";
-
-import {
-    sendVerificationOtp,
-    sendPasswordResetOtp,
-    sendLoginOtp
-} from "./email.services";
 
 interface RegisterData {
     name: string;
@@ -81,13 +72,6 @@ export async function registerUser(data: RegisterData) {
 
     const user = result.rows[0];
 
-    const otp = await createVerificationOtp(user.id);
-
-    await sendVerificationOtp(
-        user.email,
-        user.name,
-        otp
-    );
 
     return {
         user: {
@@ -100,7 +84,7 @@ export async function registerUser(data: RegisterData) {
             email_verified: user.email_verified,
             two_factor_enabled: user.two_factor_enabled
         },
-        verificationRequired: true
+        verificationRequired: false
     };
 }
 
@@ -144,45 +128,9 @@ export async function loginUser(
         throw new Error("JWT_SECRET is not configured");
     }
 
-    /*
-     * If 2FA is enabled, send an OTP and return a short-lived
-     * challenge token. Do not issue an access JWT yet.
-     */
-    if (user.two_factor_enabled === true) {
-        const { otp, otpId } = await createLogin2FAOtp(
-            user.id
-        );
-
-        await sendLoginOtp(
-            user.email,
-            user.name,
-            otp
-        );
-
-        const challengeToken = jwt.sign(
-            {
-                userId: user.id,
-                otpId,
-                purpose: "LOGIN_2FA"
-            },
-            secret,
-            { expiresIn: "10m" }
-        );
-
-        const [localPart, domain] = user.email.split("@");
-
-        const maskedEmail =
-            localPart.length <= 2
-                ? `${localPart[0] ?? "*"}***@${domain}`
-                : `${localPart.slice(0, 2)}***@${domain}`;
-
-        return {
-            twoFactorRequired: true as const,
-            challengeToken,
-            maskedEmail
-        };
-    }
-
+    // Email-based login 2FA is temporarily bypassed because this
+    // project is not currently configured to send OTP emails.
+    // The user's two_factor_enabled database value is not changed.
     // Existing login behavior for accounts without 2FA.
     const token = jwt.sign(
         {
@@ -302,37 +250,13 @@ export async function verifyUserEmail(
 ========================================================= */
 
 export async function requestPasswordReset(
-    email: string
+    _email: string
 ) {
-    const normalizedEmail = email.trim().toLowerCase();
-
-    const result = await pool.query(
-        `SELECT id, name, email
-         FROM users
-         WHERE email = $1`,
-        [normalizedEmail]
+    // Email OTP delivery has been disabled. Do not create a reset OTP
+    // or tell the user that an email was sent when no email is delivered.
+    throw new Error(
+        "Email-based password reset is temporarily unavailable. Please contact support."
     );
-
-    const response = {
-        message:
-            "If an account exists with this email, a password reset code has been sent."
-    };
-
-    if (result.rows.length === 0) {
-        return response;
-    }
-
-    const user = result.rows[0];
-
-    const otp = await createPasswordResetOtp(user.id);
-
-    await sendPasswordResetOtp(
-        user.email,
-        user.name,
-        otp
-    );
-
-    return response;
 }
 
 /* =========================================================

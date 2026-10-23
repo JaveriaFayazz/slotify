@@ -47,9 +47,9 @@ export default function RegisterPage() {
     }
 
     // Basic password validation
-    if (password.length < 6) {
+    if (password.length < 8) {
       setError(
-        "Password must be at least 6 characters."
+        "Password must be at least 8 characters."
       );
       return;
     }
@@ -65,33 +65,10 @@ export default function RegisterPage() {
         phone
       );
 
-      /*
-       * Registration is successful, but the user
-       * is not logged in yet.
-       *
-       * They must verify their email first.
-       */
-
-      if (result.verificationRequired) {
-        // Store temporary verification information.
-        sessionStorage.setItem(
-          "verificationUserId",
-          result.user.id
-        );
-
-        sessionStorage.setItem(
-          "verificationEmail",
-          result.user.email
-        );
-
-        router.push("/verify-email");
-
-        return;
-      }
-
-      throw new Error(
-        "Email verification is required."
-      );
+      // Email verification is temporarily disabled.
+      // Registration succeeds, then the user can sign in.
+      router.push("/login?registered=1");
+      return;
     } catch (err) {
       setError(
         err instanceof Error
@@ -347,13 +324,13 @@ export default function RegisterPage() {
                     }
                     placeholder="Create a password"
                     required
-                    minLength={6}
+                    minLength={8}
                   />
 
                 </div>
 
                 <span className="field-hint">
-                  Use at least 6 characters.
+                  Use at least 8 characters.
                 </span>
 
               </div>
@@ -381,7 +358,7 @@ export default function RegisterPage() {
                     }
                     placeholder="Re-enter your password"
                     required
-                    minLength={6}
+                    minLength={8}
                   />
 
                 </div>
